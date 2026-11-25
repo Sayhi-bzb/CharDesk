@@ -9,7 +9,6 @@ import {
 
 export type LinkedGlyph = { x: number; y: number; width: number; chunk: TextChunk };
 
-/** Native styled text owns URL allocation and OSC 8 encoding. Resources follow visible runs. */
 export class TerminalLinkText {
   #runs = new Map<string, { text: TextBuffer; view: TextBufferView }>();
   #visible = new Set<string>();

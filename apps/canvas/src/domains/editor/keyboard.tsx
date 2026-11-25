@@ -62,7 +62,6 @@ type EditorShortcutEntryPredicate = (
 ) => boolean;
 type Execution = ReturnType<typeof executeEntry> | { type: 'pending' } | { type: 'cancelled' };
 
-/** Explicit normalized-input API; sequence ownership and precedence stay in the library. */
 export class EditorShortcutEngine {
   readonly #host: ReturnType<typeof createProgrammaticInput>;
   readonly #bindings;

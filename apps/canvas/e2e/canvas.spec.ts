@@ -60,7 +60,6 @@ test.describe('Canvas', () => {
   });
 
   test('should display canvas', async ({ page }) => {
-    // Canvas should be visible
     const canvas = page.locator('canvas').first();
     await expect(canvas).toBeVisible();
   });
@@ -804,7 +803,6 @@ test.describe('Canvas', () => {
   });
 
   test('should have toolbar', async ({ page }) => {
-    // Toolbar buttons should be visible
     const toolbar = page.locator('[role="toolbar"]').first();
     await expect(toolbar).toBeVisible();
   });

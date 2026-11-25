@@ -167,9 +167,6 @@ export class GestureManager {
       (candidate) => candidate.kind !== "tap" && acceptsAxis(candidate, axis)
     );
     if (!winner) {
-      // A discrete control keeps tracking a pure tap while captured so moving
-      // out and back in can re-arm it. Competing drag/scroll candidates still
-      // cancel the tap when they win below.
       if (arena.candidates.every((candidate) => candidate.kind === "tap")
         && arena.candidates.some((candidate) => candidate.rearmable)) return [];
       this.#arenas.delete(pointerId);

@@ -253,7 +253,7 @@ test('Agent setup defaults without unread, scrolls as text, and copies the origi
     expect(panel.onPick).toBeUndefined();
     expect(panel.actions?.map((action) => action.label)).toEqual(['Copy']);
     const text = agentSetupText(f.surface.t);
-    expect(panel.scrollArea!.lines.join('\n')).not.toBe(text); // Narrow display wraps commands.
+    expect(panel.scrollArea!.lines.join('\n')).not.toBe(text);
     expect(panel.scrollArea!.lines.join('')).toBe(text.replaceAll('\n', ''));
     for (const part of [
       'Skill:',
@@ -313,7 +313,7 @@ test('Agent navigation cycles all views; setup never marks new activities as rea
     expect(f.surface.panel?.selectedTab).toBe(2);
     expect(f.surface.panel?.scrollArea?.scrollTop).toBe(0);
     f.close();
-    expect(f.sessions.agents.count(f.id)).toBe(0); // Only the unread list rendered on open.
+    expect(f.sessions.agents.count(f.id)).toBe(0);
   } finally {
     await f.dispose();
   }
@@ -359,7 +359,7 @@ test('Agent Copy has a fixed dialog footer, separate from scrolling text and app
     }
     f.surface.panel!.onTab!(0);
     await f.setup.renderOnce();
-    expect(f.surface.panel?.actionPlacement).toBeUndefined();
+    expect(f.surface.panel?.actionPlacement).toBe('dialog-footer');
     expect(f.surface.panelFooterControls.some((action) => action.id === 'agent-copy-setup')).toBe(
       false
     );
@@ -419,7 +419,7 @@ test('Agents hides zero and counts unread calls; the dialog separates unread/rea
     f.setup.mockInput.pressTab();
     await f.setup.renderOnce();
     expect(f.surface.panel?.selectedTab).toBe(1);
-    expect(f.surface.panel?.items).toEqual([]); // Acknowledgment happens when closing.
+    expect(f.surface.panel?.items).toEqual([]);
     f.setup.mockInput.pressTab({ shift: true });
     await f.setup.renderOnce();
     expect(f.surface.panel?.selectedTab).toBe(0);
@@ -448,6 +448,110 @@ test('Agents hides zero and counts unread calls; the dialog separates unread/rea
   }
 });
 
+test('Read all shares the dialog footer with pagination and acknowledges offscreen pages without changing Canvas state', async () => {
+  const f = await inboxFixture();
+  try {
+    for (let i = 0; i < 105; i++) f.queue(`Activity ${i}`);
+    const finish = f.sessions.agents.begin(f.id, { id: 'working', name: 'Working' }, 'canvas_code');
+    f.sessions.agents.begin('other', { id: 'one', name: 'Other' }, 'canvas_read')();
+    const before = structuredClone({
+      cursor: f.workspace.model.cursor,
+      selection: f.workspace.model.selection,
+      viewport: f.workspace.model.viewport,
+      version: f.workspace.model.documents.getContentVersion(),
+    });
+    await f.open();
+    const button = f.surface.panelFooterControls.find((action) => action.id === 'agent-read-all')!;
+    expect(button).toBeDefined();
+    expect(button.x + button.width).toBe(f.surface.panelLayout.x + f.surface.panelLayout.width - 2);
+    expect(button.y).toBe(f.surface.panelLayout.y + f.surface.panelLayout.height - 2);
+    expect(f.setup.captureCharFrame().split('\n')[button.y]).toContain('1–50 of 106 activities');
+    expect(f.surface.panelFooterControls.map((action) => action.id)).toEqual(['agent-read-all']);
+    expect(f.surface.panel?.items).toHaveLength(50);
+    f.setup.mockInput.pressArrow('right');
+    await f.setup.renderOnce();
+    expect(f.surface.panel?.footerStatus).toBe('51–100 of 106 activities');
+    await f.setup.mockMouse.click(button.x, button.y);
+    await f.setup.renderOnce();
+    expect(f.sessions.agents.count(f.id)).toBe(0);
+    expect(f.sessions.agents.count(f.id, true)).toBe(106);
+    expect(f.sessions.agents.count('other')).toBe(1);
+    expect(f.surface.panel?.selectedTab).toBe(0);
+    expect(f.surface.panel?.items).toEqual([]);
+    expect(f.row()).not.toContain('Agents 106');
+    expect({
+      cursor: f.workspace.model.cursor,
+      selection: f.workspace.model.selection,
+      viewport: f.workspace.model.viewport,
+      version: f.workspace.model.documents.getContentVersion(),
+    }).toEqual(before);
+    finish();
+    f.queue('Arrived after read all');
+    f.close();
+    expect(f.sessions.agents.count(f.id)).toBe(2);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Read all stays right aligned and preserves original footer text without pagination buttons', async () => {
+  const f = await inboxFixture();
+  try {
+    for (let i = 0; i < 60; i++) f.queue();
+    await f.open();
+    for (const language of ['en', 'zh-CN'] as const) {
+      f.surface.settings.set('language', language);
+      for (const width of [90, 40, 24]) {
+        await f.setup.resize(width, 18);
+        await f.setup.renderOnce();
+        const layout = f.surface.panelLayout;
+        const button = f.surface.panelFooterControls.find(
+          (action) => action.id === 'agent-read-all'
+        )!;
+        expect(button.y).toBe(layout.y + layout.height - 2);
+        expect(button.x + button.width).toBe(layout.x + layout.width - 2);
+        expect(layout.itemsY + layout.rows).toBeLessThan(button.y);
+        const row = f.setup.captureCharFrame().split('\n')[button.y]!;
+        expect(row).toContain(language === 'en' ? '[ Read all ]' : '[ 全读 ]');
+        expect(f.surface.panel?.footerStatus).toBe(
+          language === 'en' ? '1–50 of 60 activities' : '第 1–50 条，共 60 条活动'
+        );
+        expect(f.surface.panelFooterControls.map((action) => action.id)).toEqual([
+          'agent-read-all',
+        ]);
+        if (width === 90) expect(row).toContain(f.surface.panel!.footerStatus!);
+      }
+    }
+    f.surface.panel!.onTab!(2);
+    await f.setup.renderOnce();
+    const copy = f.surface.panelFooterControls.find((action) => action.id === 'agent-copy-setup')!;
+    expect(copy.x + copy.width).toBe(f.surface.panelLayout.x + f.surface.panelLayout.width - 2);
+    expect(f.surface.panel?.footerStatus).toBeUndefined();
+    expect(f.surface.panelFooterControls.some((action) => action.id === 'agent-read-all')).toBe(
+      false
+    );
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Read all failure keeps unread entries and reports the error without leaving the dialog', async () => {
+  const f = await inboxFixture();
+  try {
+    f.queue();
+    await f.open();
+    f.sessions.agents.markAllRead = () => false;
+    const button = f.surface.panelFooterControls.find((action) => action.id === 'agent-read-all')!;
+    await f.setup.mockMouse.click(button.x, button.y);
+    await f.setup.renderOnce();
+    expect(f.sessions.agents.count(f.id)).toBe(1);
+    expect(f.surface.panel?.selectedTab).toBe(0);
+    expect(f.surface.feedbackControl?.message).toContain('Could not mark activity as read');
+  } finally {
+    await f.dispose();
+  }
+});
+
 test('only painted rows are read; new arrivals before close and offscreen rows stay unread', async () => {
   const f = await inboxFixture(80, 16);
   try {
@@ -455,7 +559,7 @@ test('only painted rows are read; new arrivals before close and offscreen rows s
     await f.open();
     const painted = Math.min(f.surface.panelLayout.rows, 20);
     expect(painted).toBeLessThan(20);
-    f.queue('New arrival'); // Refresh the list, but do not render it before closing.
+    f.queue('New arrival');
     f.close();
     expect(f.sessions.agents.count(f.id, true)).toBe(painted);
     expect(f.sessions.agents.count(f.id)).toBe(21 - painted);

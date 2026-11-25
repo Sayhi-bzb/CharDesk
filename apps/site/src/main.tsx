@@ -75,7 +75,7 @@ export function Site() {
     if (command.type === "activate" && command.targetId === "site-theme") {
       const next = mode === "light" ? "dark" : "light";
       setMode(next);
-      try { localStorage.setItem(themePreferenceKey, next); } catch { /* Keep in-memory switching. */ }
+      try { localStorage.setItem(themePreferenceKey, next); } catch { /* empty */ }
     }
     if (command.type === "open-link") {
       if (command.target === "_blank") window.open(command.href, "_blank", "noopener,noreferrer");

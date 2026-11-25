@@ -5,7 +5,6 @@ export type CharDeskCellMetrics = {
   cellHeight: number;
   fontSize: number;
   fontFamily: string;
-  /** Alphabetic baseline from the Cell top; omitted preserves middle alignment. */
   baseline?: number;
 };
 

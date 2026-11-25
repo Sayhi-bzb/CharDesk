@@ -355,7 +355,6 @@ const isCurrentPersistedEnvelope = (raw: string | null) => {
     isPersistedEditorStateV7(envelope.state);
 };
 
-/** Moves same-origin pre-CharDesk editor data only after a verified current write. */
 export const migrateLegacyEditorPersistence = (storage: Storage): boolean => {
   try {
     const currentRaw = storage.getItem(EDITOR_PERSISTENCE_KEY);

@@ -74,7 +74,6 @@ export function createShapePoints(
   return points.map((point) => ({ ...point, color: point.color ?? style.foreground }));
 }
 
-/** Resolve collisions and background strokes on the affected cells only. No document mutation. */
 export function planDrawingPatch(
   reader: GridCellSource,
   points: readonly GridPoint[],
@@ -142,7 +141,6 @@ export function planDrawingPatch(
       row = { y: y!, erase: [], spans: [] };
       rows.set(y!, row);
     }
-    // Erase first, including every overwritten anchor; spans rebuild final state.
     row.erase.push({ from: x!, to: x! });
     if (cell) {
       const { char, ...style } = cell;
@@ -156,7 +154,6 @@ export function planDrawingPatch(
   };
 }
 
-/** Web Fill recolors existing glyphs in a rectangle; it does not flood empty space. */
 export function planForegroundFill(
   reader: GridCellSource,
   area: SelectionArea,

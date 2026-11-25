@@ -30,7 +30,6 @@ export type CharacterPickerHost = {
 };
 const views: CharacterViewId[] = ['essentials', 'nerd', 'emoji', 'unicode'];
 const PAGE = 20;
-/** Transient picker; resource completion never performs a document mutation. */
 export class CharacterPicker {
   #generation = 0;
   #timer: ReturnType<typeof setTimeout> | null = null;

@@ -9,7 +9,6 @@ export type CellRadioOptions = Readonly<{
   onValueChange?: (value: string) => void;
 }>;
 
-/** Business selection belongs here; focus/press/confirmation remain Surface-owned. */
 export function useCellRadioState(items: readonly CellRadioItem[], options: CellRadioOptions = {}) {
   const [internalValue, setInternalValue] = useState<string | null>(options.defaultValue ?? null);
   const value = options.value !== undefined ? options.value : internalValue;

@@ -322,7 +322,6 @@ const configureNode = (node: WidgetNode, target: YogaNode, tree: WidgetTree): vo
 const sameChildren = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((id, index) => id === right[index]);
 
-/** Only fields consumed by configureNode; tree topology and dropdown width are handled separately. */
 const sameLayoutInput = (before: WidgetNode, after: WidgetNode, oldTree: WidgetTree, tree: WidgetTree): boolean =>
   before.kind === after.kind
   && before.frame === after.frame
@@ -441,7 +440,6 @@ export class YogaLayoutEngine implements LayoutEngine {
     root.setWidth(viewport.width);
     root.setHeight(viewport.height);
     let adjustedTextAreaInsets = false;
-    // Auto widths can shrink again as each default inset collapses.
     for (let pass = 0; pass < 4; pass++) {
       root.calculateLayout(viewport.width, viewport.height, Direction.LTR);
       adjustedTextAreaInsets = false;

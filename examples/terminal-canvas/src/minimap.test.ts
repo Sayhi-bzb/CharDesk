@@ -52,7 +52,6 @@ test('incremental minimap reads only dirty rows and matches a cold raster throug
     sameAsCold();
     model.undo();
     sameAsCold();
-    // Outrun retained invalidations; the reader must be rebuilt safely.
     for (let i = 0; i < 300; i++)
       model.apply({
         rows: [{ y: 0, erase: [], spans: [{ x: -10, text: i % 2 ? 'X' : 'Y', color: '#00ff00' }] }],
@@ -170,7 +169,6 @@ test('empty map and its border intercept clicks; resize hides the overlay and ca
     await setup.renderOnce();
     const empty = surface.minimapFrame!;
     expect(setup.captureCharFrame().split('\n')[empty.panel.y]).toContain('No content');
-    // The empty label stays on the frame; the complete viewport interior retains its fill.
     const emptyLines = setup.captureSpans().lines;
     for (let row = empty.viewport.y; row < empty.viewport.y + empty.viewport.height; row++) {
       let start = 0;
@@ -229,7 +227,6 @@ test('visible background spaces count; viewport grab offset stays stable in the 
     frame = map.frame(model.plane, model.plane.getRevision(), model.viewport, panel);
     expect(frame.transform.contentBounds?.x).toBe(-6);
     expect(frame.transform.contentBounds?.y).toBe(-8);
-    // Measure grab translation away from the shared navigation clamps.
     model.apply({
       rows: [
         { y: -100, erase: [], spans: [{ x: -100, text: 'edge', color: '#000000' }] },

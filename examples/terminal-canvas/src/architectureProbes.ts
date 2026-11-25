@@ -12,7 +12,6 @@ import { CanvasSurface } from './surface.ts';
 import { attachControls } from './controller.ts';
 import { resolveTerminalPolicy } from './terminalPolicy.ts';
 
-// Shared by the standalone diagnostic command and the default regression gate.
 export const architectureProbes: Array<{ id: string; run: () => void | Promise<void> }> = [];
 function probe(id: string, run: () => void | Promise<void>) {
   architectureProbes.push({ id, run });
@@ -120,7 +119,7 @@ probe('closing-freezes-all-input-channels', async () => {
   try {
     await setup.renderOnce();
     surface.activateDock('settings');
-    surface.panel!.onTab!(3); // Shortcuts search input.
+    surface.panel!.onTab!(3);
     const panel = surface.panel!;
     assert.equal(typeof panel.input, 'string');
     const input = panel.input;

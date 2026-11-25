@@ -69,7 +69,6 @@ test("Cell graphics raster coverage, seams and font independence", async ({ page
         }
         cornerGaps.push(gaps);
       }
-      // Complementary fractions share the same snapped edge, including odd pixel dimensions.
       let fractionHoles = 0;
       for (const pair of [["▀", "▄"], ["▌", "▐"], ["▚", "▞"]]) {
         ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);

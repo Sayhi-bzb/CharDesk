@@ -5,7 +5,6 @@ import {
   type CanvasReadImageRenderer,
 } from '@chardesk/canvas-capabilities/readImage';
 
-/** Browser font loading and PNG encoding; no tool policy or surface reads. */
 export const renderBrowserReadImage: CanvasReadImageRenderer = async (plan) => {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');

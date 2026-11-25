@@ -155,7 +155,7 @@ describe("Slider", () => {
     expect(pilot.text()).toContain("█");
     await pilot.pointerUp({ x: 15, y: 0 }, 2, { x: 15.5, y: 0.5 });
     expect(pilot.frame.tree.nodes.get("volume")?.manipulating).toBe(false);
-    expect(pilot.text()).toContain("█"); // release retains pointer hover
+    expect(pilot.text()).toContain("█");
     await pilot.pointerMove({ x: 25, y: 0 }, 2);
     expect(pilot.text()).not.toContain("█");
     expect(pilot.frame.confirmation).toBeUndefined();

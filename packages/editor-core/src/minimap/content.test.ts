@@ -24,7 +24,6 @@ test('minimap occupancy uses complete graphemes, foreground inheritance and back
   expect(
     describeMinimapCell({ char: ' ', color: '#ff0000', bgColor: 'transparent' }).regions
   ).toEqual([]);
-  // Preserve the existing artifact sentinel: an explicitly backed foreground is authored.
   expect(
     describeMinimapCell({ char: 'A', color: '#000000', bgColor: 'transparent' }).regions[0]!.color
   ).toEqual({ kind: 'literal', value: '#000000' });

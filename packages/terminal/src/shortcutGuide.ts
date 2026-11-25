@@ -6,7 +6,6 @@ import type { TerminalInputPolicy } from './terminalPolicy.ts';
 export type ShortcutGuideRow = { label: string; keys: string; detail?: string };
 export type ShortcutGuideSection = { label: string; rows: ShortcutGuideRow[] };
 
-/** One guide model for the dialog and text readers; bindings remain owned by the keymap. */
 export function shortcutSections(
   s: TerminalShortcuts,
   policy?: TerminalInputPolicy,

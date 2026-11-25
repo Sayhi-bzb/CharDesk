@@ -16,7 +16,6 @@ const output = path.join(cwd, 'dist');
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await cp(path.join(cwd, 'build/client'), output, { recursive: true });
-// The product artifact contains no engineering pages or resources.
 const fallback = await readFile(path.join(output, '__spa-fallback.html'), 'utf8');
 const notFound = fallback
   .replace(/<link rel="modulepreload"[^>]*>/g, '')

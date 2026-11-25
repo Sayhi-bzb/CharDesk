@@ -165,7 +165,6 @@ for (const kittyKeyboard of [false, true]) {
       expect(copied).toEqual(['A界B']);
       expect(model.selection).toEqual(selection);
       expect(model.canUndo).toBe(false);
-      // User overrides still replace the compatibility key.
       model.editor.keymap.setUserBindings('terminal.copy', [['F11']]);
       setup.mockInput.pressKey('y', { ctrl: true });
       expect(copied).toHaveLength(1);
@@ -280,7 +279,6 @@ test('Hand and Option+arrows pan; wheel and middle-drag do not', async () => {
     expect(model.selection).toBeNull();
     expect(model.dirty).toBe(false);
     setup.mockInput.pressKey(KeyCodes.ESCAPE);
-    // A bare legacy Escape waits for the terminal sequence timeout.
     clock.advance(40);
     await setup.renderOnce();
     expect(surface.tool).toBe('hand');
@@ -584,7 +582,6 @@ for (const kittyKeyboard of [false, true]) {
           setup.mockInput.pressArrow(direction, { meta: true });
           expect(model.viewport).toEqual({ ...before, x: before.x + dx, y: before.y + dy });
         }
-        // Literal xterm modifier sequences exercise input parsing, not a synthetic KeyEvent.
         const before = { ...model.viewport };
         setup.mockInput.pressKey('\x1b[1;3A');
         expect(model.viewport).toEqual({ ...before, y: before.y - 10 });

@@ -1,7 +1,6 @@
 import type { ToolType } from "@/domains/canvas/public";
 import type { ToolbarActionId } from "../types";
 
-// Resolve active toolbar action
 export const resolveActiveToolbarAction = (
   tool: ToolType,
   isShapeGroupActive: boolean

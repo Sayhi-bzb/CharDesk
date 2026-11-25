@@ -22,7 +22,6 @@ export const keyName = (name: string) =>
     Esc: 'escape',
   })[name] ?? name.toLowerCase();
 
-/** v3 catalog Meta means Command; OpenTUI meta means Alt/Option. */
 const legacyStroke = (stroke: string, primary: 'ctrl' | 'super' | 'unknown') =>
   stroke
     .replace(/(^|\+)Mod(?=\+)/gi, `$1${primary === 'super' ? 'super' : 'ctrl'}`)
@@ -163,8 +162,6 @@ export function connectBindings<T extends object, E extends KeymapEvent, Context
       const command =
         typeof candidate.command === 'string' ? entries.get(candidate.command) : undefined;
       if (command) return command;
-      // Prefixes have no exact command; the library's selected presentation token
-      // identifies the catalog owner without reproducing its sequence matcher.
       if (!exact && candidate.continues && candidate.tokenName) {
         const entry = tokenEntries.get(candidate.tokenName);
         if (entry) return entry;

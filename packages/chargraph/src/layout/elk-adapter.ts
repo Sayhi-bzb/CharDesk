@@ -129,8 +129,6 @@ const topologyAlignment = (graph: LayoutGraph) => {
   for (const component of components.values()) {
     componentSizes.set(component, (componentSizes.get(component) ?? 0) + 1);
   }
-  // A strongly connected component has no intrinsic forward backbone. Applying
-  // DAG shortcut priorities inside it makes arbitrary edges lock first.
   if ([...componentSizes.values()].some((size) => size > 1)) return undefined;
 
   const componentAdjacency = new Map<number, Set<number>>();
@@ -329,8 +327,6 @@ const createIndependentPorts = (graph: LayoutGraph) => {
     const sideKey = `${nodeId}:${side}`;
     const logicalIndex = sideIndexes.get(sideKey) ?? 0;
     sideIndexes.set(sideKey, logicalIndex + 1);
-    // ELK numbers ports clockwise around a node. Normalize that order so
-    // graph edge order always reads top-to-bottom or left-to-right.
     const index = side === "SOUTH" || side === "WEST"
       ? sideCounts.get(sideKey)! - logicalIndex - 1
       : logicalIndex;
@@ -890,9 +886,6 @@ const normalizeStructuredBundles = (
 
     for (const members of candidates.values()) {
       if (members.length < 2) continue;
-      // A complete bipartite motif is not one fan. Giving each source/target
-      // its own bus creates overlapping terminal corridors; keep those edges
-      // independent and let cell routing allocate separate paths instead.
       if (members.some((edge) => kind === "fan-out"
         ? (targetCounts.get(edge.target) ?? 0) > 1
         : (sourceCounts.get(edge.source) ?? 0) > 1
@@ -1736,9 +1729,6 @@ const repairInvalidRoutes = (
         ) > 0
       );
     const axes = routeAxisCells(edge.points);
-    // Routes become immutable in deterministic order. Comparing against paths
-    // that will themselves move can reintroduce a collision after this edge
-    // has already been accepted.
     const comparisonIndexes = lockedIndexes;
     const sharesCollinearCell = comparisonIndexes.some((candidateIndex) => {
       const candidate = result[candidateIndex]!;

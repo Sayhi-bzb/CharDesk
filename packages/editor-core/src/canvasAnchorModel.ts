@@ -46,7 +46,6 @@ export const readCanvasAnchor = (value: unknown): CanvasAnchor | null => {
   };
 };
 
-/** Read a bounded text run without treating markup characters as syntax. */
 export const readCanvasAnchorLabel = (
   source: { get: (point: Point) => GridCell | undefined },
   point: Point
@@ -130,7 +129,6 @@ export const getCanvasAnchorBranchIds = (
   return ids;
 };
 
-/** Remove empty anchors while keeping surviving descendants in their visual order. */
 export const removeCanvasAnchorsPromotingChildren = (
   anchors: readonly CanvasAnchor[],
   removedIds: ReadonlySet<string>
@@ -157,7 +155,6 @@ export const removeCanvasAnchorsPromotingChildren = (
   return changes;
 };
 
-/** siblingIndex is measured after removing the moving branch. */
 export const moveCanvasAnchor = (
   anchors: readonly CanvasAnchor[],
   id: string,

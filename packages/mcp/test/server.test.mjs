@@ -91,7 +91,6 @@ test('scriptRef resolves current file contents and rejects conflicting or invali
 });
 
 test('configured source roots reject outside files and symlink escapes for every file tool', async t => {
-  // Empty roots are deny-all; add one canonical directory for the next fixture.
   const owner=await fixture(t,{sourceRoots:[]});
   const allowed=join(owner.directory,'allowed');await mkdir(allowed);
   const f=await fixture(t,{sourceRoots:[allowed]});await f.page();const client=await f.client();

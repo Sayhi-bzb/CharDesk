@@ -4,7 +4,6 @@ export type TerminalLanguage = 'system' | 'zh-CN' | 'en';
 export type InterfaceLanguage = Exclude<TerminalLanguage, 'system'>;
 export type Translate = (text: string | TemplateStringsArray, ...values: unknown[]) => string;
 
-/** POSIX locale precedence; unsupported locales use English. No terminal subprocesses. */
 export function systemLanguage(
   environment: NodeJS.ProcessEnv = process.env,
   fallback = Intl.DateTimeFormat().resolvedOptions().locale
@@ -15,7 +14,6 @@ export function systemLanguage(
   return /^zh(?:[-_.@]|$)/i.test(locale.trim()) ? 'zh-CN' : 'en';
 }
 
-/** Per-host translation; interpolated content is never looked up or re-interpolated. */
 export class TerminalI18n {
   constructor(
     private preference: () => TerminalLanguage,

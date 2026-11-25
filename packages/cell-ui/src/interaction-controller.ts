@@ -31,7 +31,6 @@ const defaultClock: InteractionClock = {
 export const sameWidgetIdSet = (left: ReadonlySet<WidgetId>, right: ReadonlySet<WidgetId>) =>
   left.size === right.size && [...left].every((id) => right.has(id));
 
-/** Host-independent ownership of interaction mechanisms and confirmation ordering. */
 export class CellInteractionController {
   readonly focus = new FocusManager();
   readonly gestures = new GestureManager();
@@ -135,7 +134,6 @@ export class CellInteractionController {
     this.notify();
   }
 
-  /** A deferred menu locks its own rectangle; outside input cancels, then proceeds. */
   interceptPointer(frame: FrameSnapshot, point: CellPoint): boolean {
     if (!this.feedback.settling) return false;
     if (!this.feedback.defersActivation) {

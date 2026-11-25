@@ -149,7 +149,6 @@ const preparedFor = (snapshot: CellTextSnapshot): PreparedCellText => {
   return prepared;
 };
 
-/** Preserve derived text data when a browser preview changes only the viewport. */
 export const withCellTextScroll = (snapshot: CellTextSnapshot, scrollX: number, scrollY: number): CellTextSnapshot => {
   const next = { ...snapshot, scrollX, scrollY };
   snapshotPreparation.set(next, preparedFor(snapshot));
@@ -591,12 +590,10 @@ const createTextLayout = (
   return layout;
 };
 
-/** The public helper keeps its complete-glyph projection for source consumers. */
 export const createCellTextLayout = (
   id: WidgetId, bounds: CellRect, contentBounds: CellRect, snapshot: CellTextSnapshot,
 ): CellTextLayoutSnapshot => createTextLayout(id, bounds, contentBounds, snapshot, false);
 
-/** Runtime painting only needs the Cells that can intersect the editor viewport. */
 export const createVisibleCellTextLayout = (
   id: WidgetId, bounds: CellRect, contentBounds: CellRect, snapshot: CellTextSnapshot,
 ): CellTextLayoutSnapshot => createTextLayout(id, bounds, contentBounds, snapshot, true);

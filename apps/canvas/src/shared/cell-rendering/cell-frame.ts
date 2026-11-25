@@ -25,8 +25,6 @@ const toFrameCell = (
   if (cached) return cached;
   const result = Object.freeze({
     visual: toCanvasVisual(cell, palette),
-    // A present source cell replaces the cell beneath it, even when it uses the
-    // palette background. Missing source cells remain transparent to overlays.
     drawBackground: true,
     drawText: cell.char !== " " || !!cell.attrs,
   });

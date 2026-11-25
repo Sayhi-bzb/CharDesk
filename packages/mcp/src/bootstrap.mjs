@@ -16,7 +16,7 @@ export async function inspectBroker(config, { signal, control = false } = {}) {
   if (signal?.aborted) throw cancelled();
   let pairing = await readPairing(config.pairingFile);
   let savedUrl;
-  try { savedUrl = new URL(pairing?.bridgeUrl); } catch { /* No valid saved broker. */ }
+  try { savedUrl = new URL(pairing?.bridgeUrl); } catch {   }
   const validUrl = savedUrl?.protocol === 'ws:' && savedUrl.hostname === '127.0.0.1'
     && savedUrl.pathname === '/bridge' && !savedUrl.username && !savedUrl.password && !savedUrl.hash;
   const port = config.port || (validUrl ? Number(savedUrl.port) : 0);

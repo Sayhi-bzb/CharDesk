@@ -26,7 +26,6 @@ export type CanvasReadImagePlan = Readonly<{
 }>;
 export type CanvasReadImageRenderer = (plan: CanvasReadImagePlan) => Promise<Uint8Array | null>;
 
-/** Capture Cells before Host IO; a read never changes the editor's camera or selection. */
 export function captureCanvasReadImage(
   surface: CanvasSurfaceReader,
   [x, y, width, height]: CanvasReadViewport,
@@ -44,7 +43,6 @@ export function captureCanvasReadImage(
     Math.sqrt(CANVAS_READ_IMAGE_LIMITS.pixels / (logicalWidth * logicalHeight))
   );
   const entries: CharDeskCanvasCellDrawEntry[] = [];
-  // Include the owner of a wide Cell whose trailing column crosses the left edge.
   const left = x > Number.MIN_SAFE_INTEGER ? x - 1 : x;
   surface.visit({ x: left, y, width: width + (x - left), height }, (cellX, cellY, cell) => {
     const visual = resolveCharDeskCellVisual({
@@ -70,7 +68,6 @@ export function captureCanvasReadImage(
   };
 }
 
-/** Browser and native Hosts use the same glyph, background, attribute and wide-Cell painter. */
 export function paintCanvasReadImage(
   context: CharDeskCellCanvasContext,
   plan: CanvasReadImagePlan,

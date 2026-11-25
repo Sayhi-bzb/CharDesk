@@ -1,4 +1,3 @@
-// Read-only decoder retained for legacy documents and persistence.
 import { normalizeSplitBoxRoot } from "./split-box-geometry";
 import type {
   StructuredNode,

@@ -30,7 +30,6 @@ export const activationFeedbackTargetForCommand = (
     : null
 );
 
-/** Owns post-activation confirmation; hosts own clocks and product commands. */
 export class ActivationFeedbackManager {
   #targetId: WidgetId | null = null;
   readonly #sequence = new ConfirmationSequence();

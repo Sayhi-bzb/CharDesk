@@ -26,7 +26,6 @@ export default function Article() {
   use(document.load());
   const Body = document.body;
   const [enhance, setEnhance] = useState(false);
-  // Keep SSR readable, but mount client-only surfaces before a navigation paints.
   useLayoutEffect(() => setEnhance(true), []);
   const [ready, setReady] = useState(false);
   const [findMode, setFindMode] = useState(false);

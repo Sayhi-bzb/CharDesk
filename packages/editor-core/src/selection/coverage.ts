@@ -9,8 +9,6 @@ export interface GridSelectionSpan {
   maxX: number;
 }
 
-/** Physical coverage, after expanding each row to whole graphemes. Bounds are
- * an envelope only; membership and operations must use spans/areas. */
 export interface GridSelectionCoverage {
   readonly spans: readonly GridSelectionSpan[];
   readonly areas: readonly SelectionArea[];
@@ -18,7 +16,6 @@ export interface GridSelectionCoverage {
   contains(point: Point): boolean;
 }
 
-/** Materialized operations have a work budget; viewport presentation and hit tests can clip first. */
 export function validateSelectionWork(ranges: readonly GridRange[], limit = 1_000_000) {
   let work = 0;
   for (const { start, end } of ranges) {
@@ -35,8 +32,6 @@ export const resolveGridSelectionCoverage = (
   grid?: GridCellSource,
   clip?: CellRect
 ): GridSelectionCoverage => {
-  // Include the width-two glyph halo before cropping; clamping an offscreen range
-  // directly to the viewport would invent selected cells along its border.
   const halo = clip ? { ...clip, x: clip.x - 1, width: clip.width + 2 } : undefined;
   const visible = !halo
     ? ranges

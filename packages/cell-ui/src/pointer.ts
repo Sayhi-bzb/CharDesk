@@ -218,8 +218,6 @@ export const reorderDropForPoint = (
   if (fromIndex < 0) return null;
   const slot = list.children.findIndex((id) => {
     const row = frame.scene.entries.get(id)?.layoutBounds;
-    // A row's visual center should land after it even with fractional browser
-    // Cell metrics; keep a smaller leading zone for explicit before placement.
     return row && point.y < row.y + row.height * 0.4;
   });
   const resolvedSlot = slot < 0 ? list.children.length : slot;

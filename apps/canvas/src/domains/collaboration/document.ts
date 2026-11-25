@@ -38,7 +38,6 @@ type CollaborationDocumentMigration = {
   migrate: (doc: Y.Doc) => void;
 };
 
-// V2 is the migration baseline. Future migrations are appended with stable ids.
 const DOCUMENT_MIGRATIONS: ReadonlyArray<CollaborationDocumentMigration> = [];
 
 export const ensureCollaborationDocumentMeta = (

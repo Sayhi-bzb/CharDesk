@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { cellPoint, readCellProbe } from "./helpers/cell-probe";
 
-const saveGlyph = "\uEB4B"; // cod-save in the pinned Nerd Fonts 3.5.1 catalog.
+const saveGlyph = "\uEB4B";
 
 test("Button content choices keep Cell geometry, semantics, and input behavior", async ({ page }) => {
   await page.goto("/#/components/button");

@@ -9,7 +9,6 @@ import { WebSocket, WebSocketServer } from "ws";
 import { CANVAS_MANAGE_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL } from "../../apps/canvas/src/app/site-tools/canvasToolDefinitions.ts";
 import { loadCredentials } from './credentials.mjs';
 
-// Experiment only: one explicitly paired browser page, no document storage.
 const canvasTools = [CANVAS_MANAGE_TOOL, CANVAS_READ_TOOL, CANVAS_SEARCH_TOOL, CANVAS_WRITE_TOOL];
 const allowedTools = new Set(canvasTools.map((tool) => tool.name));
 const origins = new Set((process.env.CHARDESK_BRIDGE_ORIGIN || "http://127.0.0.1:5173").split(","));
@@ -183,7 +182,6 @@ async function publishPairing() {
   return bridgeUrl;
 }
 const bridgeUrl = await publishPairing();
-// stdout belongs exclusively to the MCP stdio protocol.
 console.error(JSON.stringify({ bridgeUrl }));
 await mcp.connect(new StdioServerTransport());
 

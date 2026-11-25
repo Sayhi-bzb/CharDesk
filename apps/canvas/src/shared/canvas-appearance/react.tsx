@@ -14,7 +14,6 @@ export function CanvasAppearanceProvider({
   );
 }
 
-/** Synchronizes the computed Host theme into the non-React Canvas runtime. */
 export function CanvasAppearanceBridge() {
   const runtime = useCanvasAppearanceRuntime();
   const { resolvedTheme } = useUiTheme();

@@ -7,7 +7,6 @@ import type {
   ToolbarActionId,
 } from "./types";
 
-// Editor Actions
 export const EDITOR_COMMAND_META: Record<EditorActionId, ActionMeta<EditorActionId>> = {
   undo: { id: "undo", label: "Undo", shortcuts: [["mod", "z"]] },
   redo: {
@@ -132,7 +131,6 @@ export const TOOLBAR_ACTION_META: Record<ToolbarActionId, ActionMeta<ToolbarActi
   },
 };
 
-// Sidebar Actions
 export const APP_ACTION_META: Record<SidebarActionId, ActionMeta<SidebarActionId>> = {
   "toggle-grid": { id: "toggle-grid", label: "Toggle Grid" },
   "toggle-sidebar": {
@@ -143,8 +141,6 @@ export const APP_ACTION_META: Record<SidebarActionId, ActionMeta<SidebarActionId
   "open-source-code": { id: "open-source-code", label: "Open Source Code" },
 };
 
-// Unified Action Catalog
-// Context Menu Configuration
 export const CANVAS_CONTEXT_MENU: ContextMenuEntry[] = [
   { type: "action", id: "copy" },
   { type: "action", id: "copy-ansi" },

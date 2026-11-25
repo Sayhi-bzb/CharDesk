@@ -1,5 +1,3 @@
-// Runs in <head>, before the prerendered text can paint. Keep this function
-// self-contained: its source also boots pages whose application script fails.
 function startManualBoot() {
   const root = document.documentElement;
   root.dataset.manualBoot = 'loading';
@@ -25,7 +23,6 @@ html[data-manual-boot="fallback"] .manual-fallback{display:block}
 
 export function completeManualBoot() {
   const root = document.documentElement;
-  // Once text has been revealed after a failure or timeout, keep it stable.
   if (root.dataset.manualBoot === 'fallback') return false;
   root.dataset.manualBoot = 'ready';
   return true;

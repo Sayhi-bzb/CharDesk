@@ -1,6 +1,6 @@
 import { prepareSnapshotFonts } from './snapshotFonts.ts';
 import { readFileSync, constants } from 'node:fs';
-import { cp } from 'node:fs/promises';
+import { cp, copyFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,7 +10,11 @@ const config = JSON.parse(readFileSync(resolve(directory, 'tsconfig.json'), 'utf
 };
 const root = resolve(directory, config.compilerOptions.baseUrl);
 const command = process.argv[2] ?? 'start';
-// One source dataset; the built terminal distribution carries its local resources.
+await mkdir(resolve(directory, 'dist'), { recursive: true });
+await copyFile(
+  resolve(root, 'packages/terminal/src/tachyonfx.wasm'),
+  resolve(directory, 'dist/tachyonfx.wasm')
+);
 await cp(
   resolve(root, 'apps/canvas/public/data/characters'),
   resolve(directory, 'dist/characters'),
@@ -25,7 +29,6 @@ else if (command === 'audit') entrypoints = ['src/fixtures/architectureAudit.ts'
 const result = await Bun.build({
   entrypoints: [
     ...entrypoints.map((path) => resolve(directory, path)),
-    // CharGraph creates this worker relative to the compiled entrypoint.
     resolve(root, 'packages/chargraph/src/layout/elk-worker.ts'),
     resolve(root, 'packages/local-runtime/src/document-worker.ts'),
   ],
@@ -46,8 +49,6 @@ const result = await Bun.build({
     {
       name: 'chardesk-demo-sources',
       setup(build) {
-        // Reused sources have their own tsconfigs; resolve the demo's aliases
-        // explicitly so no web workspace install or generated dist is required.
         build.onResolve({ filter: /^(@chardesk\/|@\/)/ }, ({ path }) => {
           const candidate =
             config.compilerOptions.paths[path]?.[0] ??

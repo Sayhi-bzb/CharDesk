@@ -224,7 +224,6 @@ const hasSemanticChange = (before: WidgetNode, after: WidgetNode) =>
   || !sameWidgetValue(before.textEditor, after.textEditor);
 
 
-/** Classify direct node changes; runtime applies its existing phase-cascade rules. */
 export const classifyWidgetChange = (before: WidgetNode, after: WidgetNode) => ({
   layout: hasLayoutChange(before, after),
   geometry: hasGeometryChange(before, after),

@@ -94,9 +94,6 @@ export const useCanvasGestureAdapter = ({
     {
       onPinchStart: ({ origin: [ox, oy] }) => {
         if (!capabilities.navigate) return;
-        // A pinch supersedes any queued pan/zoom sample from the previous
-        // pointer sequence. Clear it once at the gesture boundary; individual
-        // pinch samples must remain coalescible until the next animation frame.
         cancelViewportInteraction();
         const anchor = pointerContext.resolveLocalPoint(ox, oy);
         pinchStartRef.current = anchor

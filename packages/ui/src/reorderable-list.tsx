@@ -20,7 +20,6 @@ import { rx } from "./recipes.js";
 import { cn } from "./utils.js";
 
 // Interaction model adapted from Moumenlab's MIT-licensed drag-to-reorder-list.
-// Rendering stays project-specific, and the whole card owns the drag gesture.
 
 const POINTER_DRAG_THRESHOLD = 4;
 const TOUCH_HOLD_DELAY = 300;

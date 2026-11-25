@@ -51,7 +51,6 @@ export const initializeCanvasTesting = ({
 
 export const getCanvasState = () => useEditorStore.getState();
 
-/** Test fixture adapter; production state has no flat interaction or viewport fields. */
 export const setCanvasTestState = (patch: CanvasTestStatePatch) => {
   const {
     interaction,

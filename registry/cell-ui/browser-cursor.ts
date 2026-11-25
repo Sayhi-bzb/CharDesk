@@ -103,7 +103,6 @@ const drawCursor = (
   });
 };
 
-/** Browser-only cursor overlay that preserves the committed Cell frame underneath it. */
 export class CellCursorPresenter {
   readonly #canvas: HTMLCanvasElement;
   readonly #media: MediaQueryList | null;

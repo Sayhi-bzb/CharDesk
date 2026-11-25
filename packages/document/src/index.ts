@@ -7,7 +7,6 @@ export type CharDeskDocumentEnvelope = {
   mode: CharDeskDocumentMode;
   body: string;
   title?: string;
-  /** Explicit opt-in extension. Bodies remain canonical visible-control text. */
   canvas?: unknown;
 };
 

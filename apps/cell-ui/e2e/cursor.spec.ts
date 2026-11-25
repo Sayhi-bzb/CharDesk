@@ -17,7 +17,6 @@ test("inverse cursor follows committed editor colors, wide glyphs, movement and 
   const pixel = (offset = 0) => readCellPixel(surface, x + offset + 0.1, y + 0.1);
   await expect.poll(() => pixel()).toEqual([255, 255, 255, 255]);
 
-  // Actual pointer entry must show the same inverse cursor before any key event.
   await page.getByRole("heading", { name: "Cell UI Fixture", exact: true }).click();
   await canvas.scrollIntoViewIfNeeded();
   const point = await cellPoint(surface, x, y);

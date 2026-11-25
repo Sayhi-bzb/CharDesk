@@ -9,13 +9,11 @@ const COMMAND_ARITY: Readonly<Record<string, number>> = {
   M: 2, L: 2, H: 1, V: 1, C: 6, Q: 4, T: 2, A: 7, Z: 0,
 };
 
-/** Stroke edges, not centerlines, belong on integer device pixels. */
 function snapCenter(value: number, width: number, scale: number, offset: number) {
   const half = Math.abs(scale) * width / 2;
   return (Math.round(value * scale + offset - half) + half - offset) / scale;
 }
 
-/** Circular corners share the center alignment used by straight Box strokes. */
 export function traceCellGraphicCorner(
   ctx: Context, direction: { x: number; y: number }, bounds: CharDeskNormalizedCellRect,
   lineWidth: number, transform?: AxisTransform,
@@ -132,7 +130,6 @@ function drawSvgArc(ctx: Context, x1: number, y1: number, rx: number, ry: number
   ctx.ellipse(cx, cy, rx, ry, phi, start, start + delta, !sweep);
 }
 
-/** Trace the normalized absolute SVG subset used by the pinned Cell graphic definitions. */
 export function traceCellGraphicPath(
   ctx: Context, path: string, bounds: CharDeskNormalizedCellRect,
   lineWidth: number, transform?: AxisTransform, snapStraightSegments = true,

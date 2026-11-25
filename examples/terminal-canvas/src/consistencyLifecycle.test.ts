@@ -104,7 +104,6 @@ test('a historical file receipt cannot replace the current binding baseline', as
     f.file.afterCapture = () => replacement!.attach(model);
     await f.workspace.saveFile(f.file);
     expect(model.dirty).toBe(true);
-    // Let worker equivalence settle: new disk baseline Y must still differ from live X.
     await Bun.sleep(250);
     expect(model.dirty).toBe(true);
     expect(await readFile(f.file.path, 'utf8')).toContain('X');

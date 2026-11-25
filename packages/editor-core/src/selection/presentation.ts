@@ -11,7 +11,6 @@ export interface GridSelectionPresentation {
 
 export type GridSelectionDragPreview = GridRange & { append?: boolean };
 
-/** Hosts render this result; they do not reinterpret gesture rectangles. */
 export const resolveGridSelectionPresentation = (input: {
   source: GridCellSource;
   ranges: readonly GridRange[];

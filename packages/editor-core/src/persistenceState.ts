@@ -6,7 +6,6 @@ export type ContentVersion = string & { readonly [identity]: 'content-version' }
 export type HistoryPosition = string & { readonly [identity]: 'history-position' };
 export type SemanticContentId = string & { readonly [identity]: 'semantic-content' };
 
-/** Canonical authored content, independent of storage history, title and view focus. */
 export function semanticDocumentSource(document: CanvasDocumentDraft): string {
   return serializeCanvasDocument({
     ...document,
@@ -52,7 +51,6 @@ type SaveStatePort = {
   dispose?(): void;
 };
 
-/** The binding owns this baseline; Session only consumes its projection. */
 export class DocumentSaveState implements DocumentPersistencePort {
   #baseline: SavedContent | null = null;
   #resolvedBaseline: SemanticContentId | undefined;
@@ -115,7 +113,6 @@ export class DocumentSaveState implements DocumentPersistencePort {
         this.#observed = { version: captured.version, semantic: current };
         if (captured.version === this.port.proof().version) this.port.changed();
       }).catch(() => {
-        // Unknown equivalence stays dirty; ordinary saving exposes IO failures.
       }).finally(() => {
         this.#pending = false;
         if (!this.#disposed && (generation !== this.#baselineGeneration ||

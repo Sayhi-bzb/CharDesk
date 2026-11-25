@@ -59,7 +59,6 @@ for (const phase of ['press', 'repeat', 'release'] as const) {
     expect(state.held).toEqual({ ...none, ctrl: true });
     state.observeKey(key('rightalt', 'press', { meta: true }), warp);
     state.observeKey(key('rightalt', 'release', { meta: true }), warp);
-    // The obsolete left Alt edge cannot keep the new right Alt release alive.
     expect(state.held).toEqual(none);
   });
 }

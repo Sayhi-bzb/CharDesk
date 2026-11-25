@@ -31,7 +31,6 @@ describe('characters', () => {
     });
 
     it('should handle combining characters', () => {
-      // é as e + combining acute accent
       expect(getFirstGrapheme('e\u0301abc')).toBe('e\u0301');
     });
 
@@ -40,23 +39,17 @@ describe('characters', () => {
     });
 
     it('should use fallback when Intl.Segmenter is unavailable', () => {
-      // Save original state
       const intlWithOptionalSegmenter =
         Intl as IntlWithOptionalSegmenter;
       const hasSegmenter = 'Segmenter' in Intl;
       const originalSegmenter = intlWithOptionalSegmenter.Segmenter;
 
       try {
-        // Remove Segmenter from Intl
         Reflect.deleteProperty(intlWithOptionalSegmenter, 'Segmenter');
 
-        // Re-import to test the fallback path
-        // We need to test the fallbackGrapheme function indirectly
-        // by verifying the function still works without Segmenter
         const result = getFirstGrapheme('Hello');
         expect(result).toBe('H');
       } finally {
-        // Restore
         if (hasSegmenter) {
           intlWithOptionalSegmenter.Segmenter = originalSegmenter;
         }
@@ -74,7 +67,6 @@ describe('characters', () => {
     });
 
     it('should return first whitespace character', () => {
-      // Whitespace is a valid character, not empty
       expect(normalizeBrushChar('   ', '█')).toBe(' ');
     });
 

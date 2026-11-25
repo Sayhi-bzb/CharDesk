@@ -55,7 +55,7 @@ describe("vendored JuliaMono symbol fallback", () => {
       return create(bytes);
     });
     const codePoints = new Set(fonts.flatMap((font) => font.characterSet));
-    codePoints.delete(0xffff); // Added by FontTools --recommended-glyphs.
+    codePoints.delete(0xffff);
     expect(codePoints.size).toBe(11_191);
 
     for (const [start, end] of [

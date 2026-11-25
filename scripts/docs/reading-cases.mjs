@@ -1,4 +1,3 @@
-// Fixed tasks and contract signatures, independent of the generated task map.
 export const readingCases = [
   ['layer-ownership', 'architecture/ownership', ['shared', 'domains', 'widgets']],
   ['command-publication', 'architecture/state-authority', ['CanvasStateCommitCoordinator', 'CanvasDocumentAddress']],

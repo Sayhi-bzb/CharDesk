@@ -12,7 +12,5 @@ export const hasAcknowledgedSecurityDisclosure = () => {
 export const acknowledgeSecurityDisclosure = () => {
   try {
     window.localStorage.setItem(SECURITY_DISCLOSURE_STORAGE_KEY, ACKNOWLEDGED);
-  } catch {
-    // The current page still clears the prompt when browser storage is unavailable.
-  }
+  } catch { /* empty */ }
 };

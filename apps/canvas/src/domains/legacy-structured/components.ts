@@ -1,6 +1,5 @@
 import type { StructuredComponentInstance, StructuredNode } from "./types";
 
-// Read-only decoder retained for validating legacy documents.
 const isComponentMetadata = (
   component: unknown
 ): component is NonNullable<StructuredNode["component"]> =>

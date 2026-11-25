@@ -19,7 +19,6 @@ const sharedBrowserSuites = {
   'visual.ts': ['theme-tokens', 'hover', 'press', 'basic-widgets', 'components'],
 }
 
-/** Explicit safety boundary: only reviewed leaf helpers receive narrow coverage. */
 export function cellVerificationScope(files, { mode, selected, root, global = false }) {
   const touched = files.filter(isCellInput)
   const active = mode === 'full' || global || touched.length > 0 || selected.has('@chardesk/cell-ui')

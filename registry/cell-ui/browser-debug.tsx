@@ -22,7 +22,6 @@ export type CellInspectorOverlayProps = Readonly<{
   show?: readonly ("owner" | "semantic" | "bounds" | "hit")[];
 }>;
 
-/** Registers a host-owned debug artifact without pretending it is a Cell frame. */
 export type CellDebugAdapter = Readonly<{
   id: string;
   snapshot: () => unknown;

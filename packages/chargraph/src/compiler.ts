@@ -30,7 +30,6 @@ export type CompileCharDeskTextOptions = Omit<
   CharGraphTextRenderOptions,
   "mode"
 > & {
-  /** Legacy input name; explicit format takes precedence. */
   sourceKind?: CharDeskSourceKind;
   format?: CharDeskTextFormat | "raw";
   chargraphMode?: CharGraphTextRenderOptions["mode"];
@@ -39,9 +38,7 @@ export type CompileCharDeskTextOptions = Omit<
     Record<CharDeskTextCompilerId, CharDeskTextStyle>
   >;
   tabSize?: number;
-  /** Protocol-only compatibility policy, used by the Viewer's syntax attribute. */
   protocolSyntax?: CharDeskTextSyntax;
-  /** Literal text with independently supplied semantic styles, such as an HTML clipboard import. */
   semanticSpans?: readonly CharDeskSemanticSpan[];
 };
 
@@ -201,7 +198,6 @@ const compileRenderedText = (
   };
 };
 
-/** Synchronous adapter for existing Protocol-only viewers; shares row compilation. */
 export const compileCharDeskProtocolText = (
   source: string,
   options: Pick<CompileCharDeskTextOptions, "defaultStyle" | "pipelineDefaultStyles" | "tabSize" | "protocolSyntax"> & {

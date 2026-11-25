@@ -52,7 +52,6 @@ import {
 
 type IdentityProps = Readonly<{
   id?: string;
-  /** Optional intent group whose members share transient activation feedback. */
   activationGroupId?: string;
 }>;
 type NamedProps = Readonly<{
@@ -93,7 +92,6 @@ export type BoxProps = ContainerProps & SurfaceAppearanceProps & Readonly<{
   probeId?: string;
   probeLabel?: string;
   style?: CellLayoutStyle;
-  /** Cell-native composition direction used by Split aliases. */
   orientation?: "horizontal" | "vertical";
   presentation?: CellUiPresentation;
   overlayScope?: boolean;
@@ -138,7 +136,6 @@ export type TextProps = Readonly<{
   children: string | number;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
-  /** Internal Markdown projection metadata. */
   markdownCode?: boolean;
   markdownTone?: MarkdownTone;
   markdownSource?: boolean;
@@ -192,7 +189,6 @@ export type ButtonProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
-  /** Optional explicit hover appearance. When omitted, the primitive keeps its default inversion. */
   hoverStyle?: CellTextStyle;
 }>;
 export type BadgeProps = NamedContainerProps & Readonly<{
@@ -239,7 +235,6 @@ export type ToggleProps = NamedContainerProps & Readonly<{
   focused?: boolean;
   style?: CellLayoutStyle;
   textStyle?: CellTextStyle;
-  /** Optional explicit hover appearance. When omitted, the primitive keeps its default inversion. */
   hoverStyle?: CellTextStyle;
 }>;
 export type ProgressProps = Readonly<{
@@ -586,7 +581,6 @@ export type WidgetDescriptor = Readonly<{
   markdownLayoutOnly: boolean;
   markdownCenteredText: string | null;
   markdownInlineRuns: readonly MarkdownInlineRun[] | null;
-  /** Built-in trailing content guard that a ScrollArea rail may occupy. */
   sharedScrollGuard: boolean;
   textStyle: CellTextStyle;
   hoverStyle: CellTextStyle | null;
@@ -886,7 +880,6 @@ const descriptorNodes = (descriptor: WidgetDescriptor): number =>
 const elementContext = (recipe: CellUiRecipe, presentation: CellUiPresentation, inScrollArea: boolean): string =>
   `${recipe.defaultControlVariant ?? ""}:${presentation}:${inScrollArea ? 1 : 0}`;
 
-/** Runtime-owned caches; element identity is retained for only the adjacent render. */
 export class MarkdownDescriptorCache {
   static readonly MAX_NODES = 25_000;
   static readonly MAX_ENTRIES = 128;
@@ -1424,7 +1417,6 @@ export const createWidgetDescriptor = (
   presentation: CellUiPresentation = "rich",
 ): WidgetDescriptor | null => createDescriptorRoot(value, recipe, presentation, null);
 
-/** Internal runtime entrypoint; standalone descriptor calls remain uncached. */
 export const createRuntimeWidgetDescriptor = (
   value: ReactElement<RootProps> | null,
   recipe: CellUiRecipe,

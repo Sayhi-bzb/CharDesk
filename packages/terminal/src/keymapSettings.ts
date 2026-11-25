@@ -14,7 +14,6 @@ import {
 } from '@chardesk/editor-core/editor/shortcut';
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
 
-/** Settings edits the shared catalog; defaults, dispatch and conflict rules stay in EditorKeymap. */
 export class TerminalKeymapSettings {
   #query = '';
   #editing: string | null = null;
@@ -205,7 +204,6 @@ export class TerminalKeymapSettings {
             : this.surface.platform === 'win32'
               ? 'windows'
               : 'linux';
-        // Recording preserves the delivered physical modifier, not a portable Mod alias.
         const stroke = shortcutFromKeyInput(terminalKeyInput(key), platform)?.replace(
           /(^|\+)Mod(?=\+)/g,
           `$1${platform === 'mac' ? 'Meta' : 'Control'}`

@@ -58,7 +58,6 @@ export function SettingsDialog({ open, onOpenChange, formFactor = 'desktop' }: S
   const keymapSnapshot = useEditorKeymapSnapshot();
   const [selectedSection, setSection] = useState<SettingsSection>('general');
   const [shortcutDirty, setShortcutDirty] = useState(false);
-  // Preserve an unsaved desktop shortcut draft until it is saved or discarded.
   const section = isHostSettingVisible(policy, selectedSection) || shortcutDirty
     ? selectedSection : 'general';
   const [shortcutRecording, setShortcutRecording] = useState(false);

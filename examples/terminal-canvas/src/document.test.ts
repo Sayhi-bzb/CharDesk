@@ -26,7 +26,6 @@ test('native text save/open preserves graphemes, styles and links', async () => 
     await file.save(model);
     const reopened = await CanvasFile.open(path);
     try {
-      // The canonical exporter may carry styles through visually empty spaces.
       const visible = (canvas: TerminalCanvas) =>
         [...canvas.plane.materialize()].filter(
           ([, cell]) => cell.char !== ' ' || cell.bgColor || cell.href

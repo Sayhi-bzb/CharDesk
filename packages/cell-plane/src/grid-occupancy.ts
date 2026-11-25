@@ -29,7 +29,6 @@ interface GridFootprint {
 export const getGridCellWidth = (cell: GridCell): 1 | 2 =>
   getCellOccupancy(cell.char) === 2 ? 2 : 1;
 
-/** Resolves a visual grid column to its single logical cell anchor. */
 export const resolveGridSlot = (grid: GridReader, point: Point): OccupiedGridSlot | null => {
   const direct = grid.get(point);
   if (direct) {
@@ -68,7 +67,6 @@ export const getGridFootprint = (grid: GridReader, point: Point): GridFootprint 
   };
 };
 
-/** Returns every stored anchor intersecting the requested visual columns. */
 export const getIntersectingGridAnchors = (
   grid: GridReader,
   start: Point,

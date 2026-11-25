@@ -1,5 +1,3 @@
-// Self-contained JavaScript helpers: paste into canvas_code, then append a task-specific caller.
-// Definitions only. No Canvas calls, placement, imports or browser APIs.
 function frameByte(value) {
   if (!Number.isFinite(value) || value < 0 || value > 255) throw new RangeError("Expected display-referred RGB channels in 0..255");
   return Math.round(value);
@@ -30,7 +28,6 @@ function encodeHalfBlocks(frame, { background = null, rowOrder = "top-down" } = 
     };
     for (let x = 0; x < width; x++) {
       const upper = color(x, y), lower = color(x, y + 1);
-      // Reset between Cells so an opaque neighbor cannot leak its lower color.
       let cell = escape + "[0m";
       if (upper && lower) cell += escape + "[38;2;" + upper.join(";") + ";48;2;" + lower.join(";") + "m▀";
       else if (upper || lower) cell += escape + "[38;2;" + (upper || lower).join(";") + "m" + (upper ? "▀" : "▄");

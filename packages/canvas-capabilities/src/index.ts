@@ -7,7 +7,6 @@ const validators = new Map(
   localToolContracts.map((contract) => [contract.name, validator.compile(contract.inputSchema)])
 );
 export type CapabilityHost = { tools: readonly AgentToolDefinition[] };
-/** One dispatch boundary shared by browser and local hosts. Transports own authentication. */
 export function createCanvasCapabilities(host: CapabilityHost) {
   const tools = new Map(host.tools.map((tool) => [tool.name, tool]));
   return {

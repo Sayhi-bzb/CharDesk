@@ -6,7 +6,6 @@ import type { GridCornerOrEdge, GridEdge } from '@chardesk/editor-core/selection
 
 type NavigationAction = { id: TerminalAction; label: string; run: () => EditorCommandResult };
 
-/** Keyboard bindings and the fallback dialog execute this same Host command catalog. */
 export function navigationActions(
   model: TerminalCanvas,
   t: Translate = english

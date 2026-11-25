@@ -14,7 +14,6 @@ export const noticeDetail = (notice: TerminalNotice) => (notice.detail ? text(no
 export const noticeAction = (notice: TerminalNotice) =>
   notice.action ? text(notice.action.label) : '';
 
-/** Transient acknowledgements and unresolved issues have separate lifetimes. */
 export class TerminalFeedback {
   #message: TerminalNotice | undefined;
   #visible = false;

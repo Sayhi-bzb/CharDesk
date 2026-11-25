@@ -1,4 +1,3 @@
-/** Browser-only geometry contract for Cell scene, canvas, DOM and hosted layers. */
 import type { CharDeskCellMetrics } from "@chardesk/rendering";
 import type { CellInspectionSnapshot, CellInteractionTraceEvent } from "./debug.js";
 import type { CellPoint, CellRect, CellSize, FrameSnapshot, WidgetId } from "./types.js";

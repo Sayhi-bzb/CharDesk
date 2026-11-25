@@ -302,13 +302,13 @@ test('changing Paste settings affects the next real paste without restarting the
     f.surface.activateDock('settings');
     f.setup.mockInput.pressTab();
     f.setup.mockInput.pressTab();
-    f.setup.mockInput.pressArrow('right'); // auto → plain
+    f.setup.mockInput.pressArrow('right');
     await f.escape();
     f.model.commands.pointAt({ x: 0, y: 3 });
     await f.setup.mockInput.pasteBracketedText('**literal**');
     await f.setup.waitFor(() => f.model.plane.get({ x: 0, y: 3 })?.char === '*');
     f.surface.activateDock('settings');
-    f.setup.mockInput.pressArrow('left'); // plain → auto; section retained
+    f.setup.mockInput.pressArrow('left');
     await f.escape();
     f.model.commands.pointAt({ x: 0, y: 5 });
     await f.setup.mockInput.pasteBracketedText('**bold**');

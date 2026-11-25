@@ -1,4 +1,3 @@
-// Definitions only. Translation-based assembly views on a miniature-raster.
 function offsetAssemblyRaster(raster, offset) {
   const point = p => p.map((value, i) => value + offset[i]);
   return {
@@ -17,7 +16,6 @@ function renderExplodedAssembly(raster, parts, { amount = 1 } = {}) {
   if (!Array.isArray(parts)) throw new TypeError("Expected parts");
   const vector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
   const ids = new Set();
-  // Validate metadata before drawing so malformed later parts do not leave a partial frame.
   const planned = parts.map(part => {
     if (!part || typeof part.id !== "string" || !part.id || ids.has(part.id) || typeof part.draw !== "function") throw new TypeError("Expected unique part IDs and draw callbacks");
     ids.add(part.id);

@@ -1,6 +1,5 @@
 import type { ActivationBlinkCount } from "./activation-feedback-config.js";
 
-/** Pure visual timing: no widget identity, command, frame, or theme. */
 export class ConfirmationSequence {
   #phases = 0;
   #index = 0;

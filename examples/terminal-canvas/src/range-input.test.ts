@@ -114,7 +114,6 @@ for (const [name, code] of [
       await f.click(0);
       const original = f.model.plane.materialize();
       f.setup.mockInput.pressKey(`\x1b[${code};3:1u`);
-      // The mouse event deliberately contains no modifiers, as in Warp's encoder.
       await f.click(2, 1);
       expect(f.model.selection).toEqual({ anchor: { x: 0, y: 0 }, focus: { x: 2, y: 1 } });
       expect(f.highlighted(1, 0)).toBe(true);

@@ -23,8 +23,6 @@ export type CanvasCodeDependencies = Readonly<{
   };
 }>;
 
-// Two injected wrapper lines precede user code. Only user-script frames leave
-// the runtime; host paths/stacks are never included in diagnostics.
 const SCRIPT_FILE = 'chardesk-canvas-code.js';
 const SCRIPT_LINE_OFFSET = 2;
 class CanvasCodeScriptError extends Error {
@@ -81,8 +79,6 @@ class CanvasCodeRuntimeError extends Error {
   }
 }
 
-/** Warm the WASM module without blocking Canvas startup. A failed warmup is
- * observable and never prevents the primitive Canvas tools from loading. */
 export const warmCanvasCodeRuntime = () => {
   if (runtimeWarmup) return runtimeWarmup;
   runtimeWarmup = newAsyncContext()
@@ -123,9 +119,6 @@ const awaitWithTimeout = async <T>(
   }
 };
 
-// This is intentionally a capability runtime, not a general-purpose shell.
-// Rejecting ambient APIs keeps accidental use clear while the actual Canvas
-// state remains reachable only through the four injected capabilities.
 const errorResult = (code: string, message: string) => ({ ok: false, code, message });
 
 const invoke = (
@@ -480,7 +473,6 @@ export const createCanvasCodeTool = (
       }
       if (!('value' in evaluation)) throw new Error('Canvas code could not be evaluated.');
       const rawHandle = (resultHandle = evaluation.value);
-      // dump consumes Promise handles; retain the original while polling.
       let dumped = qjsContext.dump(rawHandle.dup()) as
         { type?: string; value?: unknown; error?: unknown } | unknown;
       while (
@@ -584,7 +576,6 @@ export const createCanvasCodeTool = (
             : mode === 'preview' && writes > 0
               ? 'preview'
               : 'none',
-        // Already-dispatched capabilities have no cancellation contract; their effects must be inspected.
         ...(pendingHostCalls.size > 0
           ? { pendingHostCalls: pendingHostCalls.size, executionUnknown: true }
           : {}),

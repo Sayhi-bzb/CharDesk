@@ -30,7 +30,6 @@ let signature: Array<{ at: Point; cell: GridCell }> | undefined;
 function welcomeSignature() {
   if (!signature) {
     const grid = buildDefaultDemoGrid();
-    // Artifact identity comes from its content, not a user-editable filename/session title.
     signature = [
       grid.find(([, cell]) => cell.char === '█' && cell.color === '#f54954')!,
       grid.find(([, cell]) => cell.char === 'N' && cell.color === '#2563eb')!,
@@ -43,7 +42,6 @@ function welcomeSignature() {
   return signature;
 }
 
-/** Shared Welcome appearance. Source Cells and serialized/native documents retain their authored RGB. */
 export class WelcomeAppearance {
   #views = new WeakMap<GridCellSource, WelcomeGridSource>();
   #scopes = new WeakSet<GridCellSource>();
@@ -60,7 +58,6 @@ export class WelcomeAppearance {
   project(source: GridCellSource, scope?: GridCellSource): GridCellSource;
   project(source: GridCellSource, scope: GridCellSource = source): GridCellSource {
     if (!this.#scopes.has(scope)) {
-      // Fragment-only paint/query sources cannot establish whole-artifact identity.
       if (typeof scope.get !== 'function' || typeof scope.getContentBounds !== 'function')
         return source;
       if (scope.get({ x: 1, y: 0 })?.char !== '█') return source;
@@ -105,9 +102,7 @@ class WelcomeGridSource implements GridCellSource {
     this.appearance = appearance;
   }
   projectCell = (cell: GridCell) => {
-    // An authored background owns its foreground contrast, including white-on-blue buttons and code panels.
     let role = cell.bgColor === undefined ? roles.get(cell.color.toLowerCase()) : undefined;
-    // The authored muted RGB is also used for prose and button labels; keep text more readable than rules.
     if (role === 'border' && !/^[\u2500-\u257f]$/u.test(cell.char)) role = 'muted';
     if (!role) return cell;
     const snapshot = this.appearance();

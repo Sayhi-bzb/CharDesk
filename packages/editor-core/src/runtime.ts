@@ -101,7 +101,6 @@ import {
 const FOREGROUND = '#000000';
 
 export type FreeformEditorSessionOptions = {
-  /** Injected registries remain owned by the caller. */
   documents?: CanvasDocumentRegistry;
   document?: CanvasDocumentDraft;
   address?: CanvasDocumentAddress;
@@ -122,7 +121,6 @@ type LocalDocumentState = {
   diagnostics: NonNullable<PreparedClipboardPaste['diagnostics']>;
 };
 
-/** Headless single-page editor over the shared document, command and interaction primitives. */
 export class FreeformEditorSession {
   readonly editor: EditorRuntime<
     ReturnType<FreeformEditorSession['getSnapshot']>,
@@ -222,7 +220,6 @@ export class FreeformEditorSession {
     if (this.gestureState.type === 'idle') return;
     this.#run(() => this.editor.dispatch({ type: 'canvas-interaction-cancel', reason: 'escape' }));
   }
-  /** Editing consumes a passive selection preview; staged moves/drawing still cancel. */
   settleInteraction() {
     const state = this.gestureState;
     if (state.type === 'selecting' && this.currentTool === 'select') {
@@ -1395,7 +1392,6 @@ export class FreeformEditorSession {
         ? this.#interaction.session
         : createStaticGridInputSession({ origin });
     this.#inputColumn = inputSession.origin.x;
-    // Terminal input can deliver a combining mark / ZWJ sequence in separate events.
     const previous = this.#lastTyped && this.plane.get(this.#lastTyped);
     if (
       previous &&
@@ -1408,7 +1404,6 @@ export class FreeformEditorSession {
         text = previous.char + text;
       }
     }
-    // A tab stop belongs to the input session, independent of event chunking.
     let column = origin.x - this.#inputColumn;
     let expanded = '';
     for (const { segment } of iterateGraphemes(text.replace(/\r\n?/g, '\n'))) {

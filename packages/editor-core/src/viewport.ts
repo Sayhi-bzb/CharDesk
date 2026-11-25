@@ -1,4 +1,5 @@
 export type CanvasReadViewport = readonly [x: number, y: number, width: number, height: number];
+export const CANVAS_READ_CAMERA = Object.freeze({ width: 100, height: 40 });
 export const isCanvasReadViewport = (value: unknown): value is CanvasReadViewport =>
   Array.isArray(value) &&
   value.length === 4 &&

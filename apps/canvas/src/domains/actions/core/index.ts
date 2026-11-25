@@ -1,4 +1,3 @@
-// Types
 export type {
   ActionResult,
   EditorActionId,
@@ -7,7 +6,6 @@ export type {
   ContextMenuEntry,
 } from './types';
 
-// Catalog
 export {
   APP_ACTION_META,
   EDITOR_COMMAND_META,
@@ -15,7 +13,6 @@ export {
   CANVAS_CONTEXT_MENU,
 } from './catalog';
 
-// Runtime
 export { createEditorCommands, createEditorCommandsExtension } from './runtime';
 export type { EditorCommandOptions } from './runtime';
 export { isActionAccepted } from './result';
@@ -31,5 +28,4 @@ export {
 } from './shortcuts';
 export type { ShortcutDisplayStroke, ShortcutPlatform } from './shortcuts';
 
-// Handlers (for advanced use cases)
 export { resolveActiveToolbarAction } from './handlers';

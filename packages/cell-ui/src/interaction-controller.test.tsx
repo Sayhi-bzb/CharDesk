@@ -151,7 +151,7 @@ it.each(["button", "toggle", "radio"].flatMap((kind) => [0, 1, 2, 3].map((count)
   controller.commit({ type: "activate", targetId: "save" }, frame, count);
   for (let phase = 0; phase < count * 2; phase++) {
     expect(time.callbacks.size).toBe(0);
-    time.tick(); // unpublished/unacknowledged phases cannot be skipped
+    time.tick();
     const presentation = frame.confirmation!;
     expect(presentation.phase).toBe(phase);
     expect(frame.buffer.get(0, 0)?.style.backgroundColor).toBe(phase % 2 === 0 ? reference.color : reference.backgroundColor);

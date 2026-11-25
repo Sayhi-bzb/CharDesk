@@ -23,15 +23,12 @@ const decodeStorageValue = <S>(raw: string): StorageValue<S> | null => {
     if (!value || typeof value !== "object" || !("state" in value)) return null;
     const version = "version" in value ? value.version : undefined;
     if (version !== undefined && typeof version !== "number") return null;
-    // This adapter validates the Zustand envelope; the owning persistence
-    // decoder validates its state payload during migration/merge.
     return value as StorageValue<S>;
   } catch {
     return null;
   }
 };
 
-/** Keeps serialization and storage I/O off high-frequency editor updates. */
 export const createPersistenceCoordinator = <T>({
   delay = 500,
   write,

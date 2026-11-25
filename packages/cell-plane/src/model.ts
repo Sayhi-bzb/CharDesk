@@ -58,7 +58,6 @@ export type EncodedCellPlaneOperation = {
 
 export type CellPlaneOperation = LegacyCellPlaneOperation | EncodedCellPlaneOperation;
 
-/** Compact, rendering-neutral mutation accepted by the document write port. */
 export type CellPlanePatch = {
   rows: readonly CellRowMutation[];
 };
@@ -455,7 +454,6 @@ type PreparedCellTextCacheEntry = {
 
 type BudgetEntry = { bytes: number; evict: () => void };
 
-/** Shared byte-bounded LRU for disposable Canvas projections. */
 export class CanvasProjectionCacheBudget {
   #byteBudget: number;
   readonly #entries = new Map<object, BudgetEntry>();
@@ -554,7 +552,6 @@ export interface CanvasSurfaceReader extends GridCellSource {
 
 export type CanvasSurfaceChanges = CellChanges;
 
-/** Optional capability for surfaces that can describe changes since a revision. */
 export interface IncrementalCanvasSurfaceReader extends CanvasSurfaceReader {
   getRevision(): number;
   getChangesSince(revision: number): CanvasSurfaceChanges;
@@ -680,8 +677,6 @@ const toCell = (span: StyledCellSpan, char: string, targetBackground?: string): 
 });
 
 const getSingleCellAsciiSlice = (text: string, spanX: number, fromX: number, toX: number) => {
-  // Most large imported planes are ASCII. Avoid running Intl.Segmenter over an
-  // entire logical row when a chunk only needs a small window of that row.
   if (!/^[\x20-\x7e]*$/.test(text)) return null;
   const start = Math.max(0, fromX - spanX);
   const end = Math.min(text.length, toX - spanX + 1);
@@ -894,10 +889,6 @@ export const gridChangesToCellPlaneOperation = (
   );
 };
 
-/**
- * Ordered semantic operation index. Yjs owns the operation order; this class is
- * a disposable spatial projection and never writes collaborative state.
- */
 export class CellPlaneIndex implements CanvasSurfaceReader {
   readonly #operations: CellPlaneOperation[] = [];
   readonly #referencesByChunk = new Map<string, CellPlaneChunkReference[]>();
@@ -961,8 +952,6 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
         for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1)
           this.#deleteCachedChunk(chunkKey(chunkX, chunkY));
     } else {
-      // A sparse bootstrap may span millions of empty chunks. Only resident
-      // projections need invalidation; uncached chunks already replay latest ops.
       for (const key of [...this.#chunkCache.keys()]) {
         const { x, y } = GridManager.fromKey(key);
         if (x >= minChunkX && x <= maxChunkX && y >= minChunkY && y <= maxChunkY)
@@ -1055,7 +1044,6 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     return this.getCell(point);
   }
 
-  /** Counts logical cells without warming the resident chunk cache. */
   countCells() {
     let count = 0;
     for (const key of this.#referencesByChunk.keys()) {
@@ -1075,7 +1063,6 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
     return count;
   }
 
-  /** Iterates visible resident cells without building row and span projections. */
   visitCells(bounds: NodeBounds, visitor: (x: number, y: number, cell: GridCell) => void) {
     if (bounds.width <= 0 || bounds.height <= 0) return;
     const minChunkX = floorDiv(bounds.x, CELL_PLANE_CHUNK_WIDTH);
@@ -1360,7 +1347,6 @@ export class CellPlaneIndex implements CanvasSurfaceReader {
   }
 
   *#queryChunks(minX: number, maxX: number, minY: number, maxY: number) {
-    // Small reads probe their rectangle; large overviews scan the sparse directory.
     const area = (maxX - minX + 1) * (maxY - minY + 1);
     if (area <= this.#referencesByChunk.size) {
       for (let y = minY; y <= maxY; y++)

@@ -13,7 +13,6 @@ if (!expectedSha || head !== expectedSha) throw new Error("Checkout must match t
 const api = repositoryApi({ token, repository });
 const currentHead = async () => (await api("/git/ref/heads/main")).object.sha;
 
-// Defer if main has advanced beyond the verified checkout.
 if (await currentHead() !== expectedSha) {
   console.log("Main advanced; defer release preparation until its next verified run.");
 } else {

@@ -1,6 +1,5 @@
 import { AGENT_ROUTE_MANIFEST } from "../lib/agent-routes";
 
-/** The website and Agent index select tasks from the same manifest. */
 export function AgentRoutes() {
   return <table>
     <thead><tr><th>Task</th><th>Start here</th></tr></thead>

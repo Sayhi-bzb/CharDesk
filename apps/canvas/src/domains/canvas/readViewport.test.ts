@@ -163,9 +163,9 @@ describe("Canvas viewport reading", () => {
     const output = view.content.split("\n");
     const origin = output.find((line) => line.includes("┤"))!.indexOf("┤") + 1;
     const ruler = output.find((line) => line.includes("┬"))!;
-    expect(output[1][origin + 4]).toBe("0"); // [-1,2) contains the zero tick.
+    expect(output[1][origin + 4]).toBe("0");
     expect(ruler[origin + 4]).toBe("┬");
-    expect(ruler[origin + 11]).toBe("┬"); // [20,23) contains the minor tick at 20.
+    expect(ruler[origin + 11]).toBe("┬");
     expect(lines(view.content)).toHaveLength(20);
     expect(output.filter((line) => /[│┤]/u.test(line)).map((line) => line.slice(0, origin - 1).trim()).filter(Boolean)).toEqual(["0", "20", "40"]);
   });

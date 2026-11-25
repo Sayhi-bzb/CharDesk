@@ -2,8 +2,6 @@ import { expect, test, type Page } from "@playwright/test";
 import { DEFAULT_CANVAS_CELL_METRICS } from "../src/shared/fonts/canvas-profile";
 
 const STORAGE_KEY = "chardesk-persistence";
-// Keep seeded content in the unobstructed center of the Canvas. Coordinates near
-// the left edge can hit the character library instead of the Canvas surface.
 const VIEWPORT = { offset: { x: 720, y: 450 }, zoom: 1 };
 
 const seedFreeformSelection = async (

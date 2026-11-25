@@ -21,7 +21,6 @@ export class CanvasVersionConflict extends Error {
   }
 }
 
-/** Content generations are independent of undo capture, view state and catalog revisions. */
 export class CanvasContentVersions {
   private readonly publish: (notify: () => void) => void;
   constructor(publish: (notify: () => void) => void = (notify) => notify()) {
@@ -38,7 +37,6 @@ export class CanvasContentVersions {
     const state = { epoch: globalThis.crypto.randomUUID(), incarnation: globalThis.crypto.randomUUID(), revision: 0, unrecorded: 0 };
     this.#documents.set(doc, state);
     const changed = new WeakSet<Y.Transaction>();
-    // Bump before observers run: readers triggered by a mutation must see its new version.
     const before = (transaction: Y.Transaction) => {
       const meta = doc.share.get('document-meta');
       const contentChanged = [...transaction.changed].some(
@@ -78,7 +76,6 @@ export class CanvasContentVersions {
     return `${state.incarnation}:${state.unrecorded}`;
   }
 
-  /** The local owner calls this while installing a verified disk/checkpoint snapshot. */
   restore(doc: Y.Doc, version: string) {
     if (!version || version.length > 256) throw new Error('Invalid content version.');
     const state = this.#documents.get(doc);

@@ -31,7 +31,6 @@ test('fragmented VT diffs match the composed frame throughout overlay and Unicod
     await setup.renderOnce();
     await setup.renderer.nativeScene.driver.idle();
     const wire = Buffer.concat(chunks.splice(0));
-    // Deliberately split UTF-8, CSI and OSC packets, as a terminal stream may.
     for (let i = 0; i < wire.length; i += 7) embedded.write(wire.subarray(i, i + 7));
     await terminal.renderOnce();
     expect(embedded.screen().lines.map((line) => line.trimEnd()), label).toEqual(
@@ -70,7 +69,7 @@ test('fragmented VT diffs match the composed frame throughout overlay and Unicod
       setup.mockInput.pressKey('\x1b[3~');
       await present(`delete ${cycle}`);
       setup.mockInput.pressKey('z', { ctrl: true });
-      setup.mockInput.pressKey('\x1b[57442;1:3u'); // physical Control release
+      setup.mockInput.pressKey('\x1b[57442;1:3u');
       await present(`undo ${cycle}`);
       expect(model.plane.materialize()).toEqual(original);
     }

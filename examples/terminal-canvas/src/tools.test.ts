@@ -346,7 +346,7 @@ for (const platform of ['darwin', 'win32'] as const) {
       expect(f.model.editor.commands.canExecute('terminal.save', undefined)).toBe(false);
       f.surface.activateDock('edit');
       f.setup.mockInput.pressKey('c', { meta: true });
-      expect(f.writes).toBe(2); // Option/Alt is not Command.
+      expect(f.writes).toBe(2);
       expect(f.model.plane.get({ x: 1, y: 0 })?.char).toBe('界');
     } finally {
       await f.dispose();
@@ -517,7 +517,6 @@ for (const releaseBeforeDelete of [true, false]) {
         f.model.viewport = { ...f.model.viewport, x: 0, y: 0 };
         await f.setup.renderOnce();
         const original = f.model.plane.materialize();
-        // The real Warp trace delivers Delete while the pointer is still selecting.
         await f.setup.mockMouse.pressDown(1, CANVAS_TOP);
         await f.setup.mockMouse.emitMouseEvent('drag', 4, CANVAS_TOP);
         if (releaseBeforeDelete) await f.setup.mockMouse.release(4, CANVAS_TOP);

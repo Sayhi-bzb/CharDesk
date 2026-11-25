@@ -28,7 +28,6 @@ export const contentColorContrast = (a: string, b: string) => {
     right = luminance(b);
   return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
 };
-/** Derive neutral ink from a Host palette, preserving a minimum contrast against its background. */
 export function deriveContentNeutral(
   palette: Readonly<{ foreground: string; background: string }>,
   weight: number,

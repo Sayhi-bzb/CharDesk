@@ -72,14 +72,11 @@ export const normalizeShortcutStroke = (
   const validation = validateHotkey(candidate);
   if (!validation.valid || !hasNonModifierKey(candidate, platform)) return null;
   const normalized = normalizeHotkey(candidate, platform);
-  // Portable Mod is explicit policy. Preserve a literal Control/Command binding
-  // when TanStack canonicalization would otherwise make it platform-adaptive.
   return /(?:^|\+)mod\+/i.test(candidate)
     ? normalized
     : normalized.replace(/(^|\+)Mod(?=\+)/g, `$1${platform === 'mac' ? 'Meta' : 'Control'}`);
 };
 
-/** Converts legacy space-delimited shortcuts and canonical stroke arrays to one sequence shape. */
 export const normalizeShortcut = (
   shortcut: string | readonly string[],
   platform: ShortcutPlatform = getPlatform()
@@ -96,7 +93,6 @@ export const shortcutSequenceKey = (sequence: ShortcutSequence) => sequence.join
 export const shortcutsEqual = (left: ShortcutSequence, right: ShortcutSequence) =>
   left.length === right.length && left.every((stroke, index) => stroke === right[index]);
 
-// TanStack reads only these six fields; no DOM event is constructed by the core.
 const hotkeyEventFromInput = (input: KeyInput): ShortcutKeyboardEvent =>
   ({
     key: input.key,

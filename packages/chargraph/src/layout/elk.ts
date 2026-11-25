@@ -56,7 +56,6 @@ class ElkWorkerEngine implements GraphLayoutEngine {
       } else {
         request.resolve(data.data);
       }
-      // Keep active layouts alive, but allow an idle CLI Host to exit.
       if (this.pending.size === 0) this.worker.unref?.();
     });
     this.worker.addEventListener("error", (event) => {

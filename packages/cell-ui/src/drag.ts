@@ -8,7 +8,6 @@ export type CellDragState = Readonly<{
   targetId: WidgetId | null;
   payload: CellDragPayload | null;
   point: CellPoint | null;
-  /** Sub-cell pointer position in scene coordinates. */
   precisePoint?: CellPoint;
   origin: CellPoint | null;
   active: boolean;
@@ -51,7 +50,6 @@ export const commitCellDrag = (state: CellDragState): CellDragState => state.pha
 export const cancelCellDrag = (state: CellDragState): CellDragState => state.phase === "pending" || state.phase === "dragging" ? ({ ...state, active: false, phase: "cancelled" }) : state;
 
 
-/** Targets are ordered back-to-front; only accepted, visible rectangles participate. */
 export const cellDropTargetAtPoint = (
   targets: readonly CellDropTarget[], point: CellPoint, payload: CellDragPayload | null,
 ): WidgetId | null => {

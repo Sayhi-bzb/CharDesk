@@ -35,6 +35,7 @@ test('an unavailable activity store remains advisory and cannot fail a Canvas ca
   expect(agents.count('canvas')).toBe(0);
   expect(agents.list('canvas')).toEqual([]);
   expect(agents.markRead('canvas', [{ id: 1, revision: 1 }])).toBe(false);
+  expect(agents.markAllRead('canvas')).toBe(false);
   expect(agents.error).toContain('unavailable');
   agents.dispose();
 });
@@ -47,6 +48,7 @@ test('storage failures remain visible after successful reads; disposed inboxes i
     create: failed,
     finish: failed,
     markRead: failed,
+    markAllRead: failed,
     details: () => undefined,
     list: () => [],
     count: () => 0,

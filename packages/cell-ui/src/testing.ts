@@ -290,7 +290,6 @@ export class TestPilot {
   get #renderState() {
     return {
       ...this.#controller.renderState,
-      // A headless pilot represents an active host; modality only gates navigation highlights.
       activeFocusId: this.#focus.focusedId,
       hoveredId: this.#primitiveHover(),
     };

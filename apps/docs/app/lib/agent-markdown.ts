@@ -1,4 +1,3 @@
-/** Processed MDX uses site-relative paths; Agent resources need public docs URLs. */
 export function agentMarkdown(markdown: string) {
   return markdown
     .replace(/<AgentRoutes\s*\/>/g, "")

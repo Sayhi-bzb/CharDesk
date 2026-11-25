@@ -10,7 +10,6 @@ interface LegacyDatabase extends DBSchema {
   migrations: { key: string; value: MigrationRecord };
 }
 
-/** Old source stores are read-only; only the migration journal can be changed. */
 export class LegacyBlackboardRepository {
   readonly databaseName: string;
   constructor(databaseName = "chardesk-blackboard-workspaces") { this.databaseName = databaseName; }

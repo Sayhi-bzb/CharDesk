@@ -3,9 +3,12 @@ import type { CellRect as NodeBounds } from '@chardesk/cell-core';
 import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
 import { isCanvasCellOccupied as occupied, readCanvasTextRegion } from './textRegion';
 
-import { isCanvasReadViewport, type CanvasReadViewport } from '@chardesk/editor-core/viewport';
+import {
+  CANVAS_READ_CAMERA,
+  isCanvasReadViewport,
+  type CanvasReadViewport,
+} from '@chardesk/editor-core/viewport';
 export { isCanvasReadViewport, type CanvasReadViewport } from '@chardesk/editor-core/viewport';
-const CANVAS_READ_CAMERA = Object.freeze({ width: 100, height: 40 });
 export type CanvasReadImageDetail = 'low' | 'high' | 'original' | 'auto';
 export type CanvasReadProjection = Readonly<{
   viewport: CanvasReadViewport | null;
@@ -25,9 +28,7 @@ export type CanvasReadImage = Readonly<{
 }>;
 
 export type CanvasReadImageOptions = Readonly<{
-  /** Canonical stored foreground, e.g. Canvas' #000000 default. */
   defaultForeground?: string;
-  /** Theme-projected foreground used when the canonical default is found. */
   foreground?: string;
 }>;
 
@@ -39,7 +40,6 @@ const niceTickInterval = (minimum: number) => {
   return 10 * magnitude;
 };
 
-/** A sampled bucket can contain a tick without starting on that coordinate. */
 const tickInBucket = (start: number, size: number, interval: number): number | null => {
   const remainder = start % interval;
   const offset = remainder <= 0 ? -remainder : interval - remainder;
@@ -76,11 +76,6 @@ const imageMetrics = (detail: CanvasReadImageDetail) => {
   }
 };
 
-/**
- * Produces a lossless, browser-renderable intermediate image without requiring
- * a canvas DOM node. Agent PNG reads use readImage's shared Cell painter and
- * Host encoding instead; this helper remains available to direct SVG consumers.
- */
 export const renderCanvasViewportImage = (
   surface: CanvasSurfaceReader,
   viewport: CanvasReadViewport,

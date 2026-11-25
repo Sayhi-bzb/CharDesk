@@ -71,10 +71,10 @@ test('Rendering settings validate, persist and drive actual paste features, colo
     pick(2);
     expect(settings.renderProfile.markdownAutoAnchorsEnabled).toBe(false);
     pick(3);
-    pick(0); // strong off
+    pick(0);
     expect(settings.renderProfile.features['markdown.strong']!.enabled).toBe(false);
     escape();
-    pick(4); // semantic light foreground
+    pick(4);
     pick(1);
     await setup.mockInput.typeText('#1234567', 0);
     setup.mockInput.pressKey('\x7f');
@@ -82,7 +82,7 @@ test('Rendering settings validate, persist and drive actual paste features, colo
     setup.mockInput.pressEnter();
     expect(settings.renderProfile.renderThemes.light.foreground).toBe('#123456');
     escape();
-    pick(5); // feature colors
+    pick(5);
     const linkIndex = surface.panel!.items.findIndex((item) => item === 'link');
     pick(linkIndex);
     pick(1);

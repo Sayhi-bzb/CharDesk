@@ -73,11 +73,8 @@ export function CanvasTemplatePlacementProvider({ children }: { children: ReactN
       origin: { x: clientX, y: clientY },
       timer: setTimeout(() => {
         suppressClickUntil.current = Date.now() + 700;
-        // Capture on a persistent owner before the modal source unmounts.
         document.body.setPointerCapture(pointerId);
         begin({ templateId, mode: 'drag', pointerId }, close);
-        // Touch events retain their original target even after the Sheet closes.
-        // Keep a native listener there so browser scrolling cannot cancel the drag.
         const preventScroll = (move: Event) => move.preventDefault();
         source.addEventListener('touchmove', preventScroll, { passive: false });
         touchSourceCleanup.current = () => source.removeEventListener('touchmove', preventScroll);

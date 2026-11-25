@@ -120,7 +120,6 @@ const manyGlyph = (side: GridSide, useAscii: boolean) => {
   return side === "bottom" ? "╨" : "╥";
 };
 
-/** Returns marker cells ordered from the entity outward along the route. */
 export const getErEndpointGlyphs = (
   cardinality: Cardinality,
   side: GridSide,

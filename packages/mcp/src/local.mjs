@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-/** The Node MCP adapter delegates local execution to the installed Bun application. */
 export function callLocal(name, input, signal) {
   return new Promise((resolve, reject) => {
     const { canvasId, ...parameters } = input;

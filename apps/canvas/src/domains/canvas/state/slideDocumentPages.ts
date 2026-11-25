@@ -6,7 +6,6 @@ import {
 import type { GridCell } from "@/shared/types";
 import type { CanvasDocumentRegistry } from "./CanvasDocumentRegistry";
 
-/** Slide metadata and content live in the Canvas document; the deck is a projection. */
 
 export const readSlideDeckDescriptor = (
   documents: CanvasDocumentRegistry,

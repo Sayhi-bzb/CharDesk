@@ -119,7 +119,6 @@ const pageBounds = (offset: number, limit: number) => {
     throw new Error('Invalid character page.');
 };
 
-/** Shared catalog and bounded resource caches. Hosts own transport, workers and UI state. */
 export class CharacterLibrary {
   #manifest: Promise<CharacterManifest> | null = null;
   #unicode: Promise<UnicodeManifest> | null = null;

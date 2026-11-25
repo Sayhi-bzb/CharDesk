@@ -1461,9 +1461,7 @@ export function setUiLanguage(language: UiLanguage) {
       if (window.localStorage.getItem(STORAGE_KEY) === language) {
         window.localStorage.removeItem(LEGACY_STORAGE_KEY);
       }
-    } catch {
-      // Keep the in-memory preference when browser storage is unavailable.
-    }
+    } catch { /* empty */ }
   }
   listeners.forEach((listener) => listener());
 }

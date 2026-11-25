@@ -376,7 +376,6 @@ export const composeScene = (
   overlayViewport: CellRect = layout.viewport,
 ): SceneSnapshot => composeSceneInternal(tree, layout, overlayViewport);
 
-/** Reuses scene entries outside scroll subtrees; callers must prove the frame is scroll-only. */
 export const composeSceneForScroll = (
   tree: WidgetTree,
   layout: LayoutSnapshot,

@@ -1,4 +1,3 @@
-/** TUI chrome only. Document, template and resource labels retain their source text. */
 export const zhCN: Readonly<Record<string, string>> = {
   Agent: 'Agent',
   'Install and configure CharDesk for this coding agent:':
@@ -35,6 +34,7 @@ export const zhCN: Readonly<Record<string, string>> = {
   Read: '已读',
   'Read canvas': '读取画布',
   Unread: '未读',
+  'Read all': '全读',
   Completed: '已完成',
   Failed: '失败',
   Interrupted: '已中断',

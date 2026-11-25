@@ -31,10 +31,6 @@ export function useCellOverlayLayer(): HTMLElement | null {
   return host.layer;
 }
 
-/** Coordinates portals, outside input, and focus across separate CellSurfaces.
- * Anchor/content rectangles come from the same CellSurface geometry registry
- * used by canvas overlays, so DOM portals share the Cell coordinate contract.
- */
 export function CellOverlayHost({ children }: Readonly<{ children: ReactNode }>) {
   const [layer, setLayer] = useState<HTMLElement | null>(null);
   const entries = useRef<OverlayEntry[]>([]);
@@ -199,8 +195,6 @@ export function CellOverlayPortal({ open, anchor, placement = "bottom-start", mo
       const moved = element.style.left !== left || element.style.top !== top;
       element.style.left = left;
       element.style.top = top;
-      // A hosted CellSurface owns a logical hit region; its physical guard
-      // remains visible without making the surrounding portal interactive.
       element.style.pointerEvents = content === physical ? "auto" : "none";
       if (moved) element.ownerDocument.dispatchEvent(new Event("cell-overlay-position-change"));
     };

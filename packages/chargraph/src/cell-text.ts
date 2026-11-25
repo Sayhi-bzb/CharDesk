@@ -13,11 +13,6 @@ interface CellTextCodec {
   decode(value: string): string;
 }
 
-/**
- * Adapts grapheme text to the vendored renderer's one-code-unit-per-column
- * invariant. Wide graphemes receive a visible head plus an occupied
- * continuation cell; decoding removes only that continuation cell.
- */
 export const createCellTextCodec = (): CellTextCodec => {
   const graphemeToToken = new Map<string, string>();
   const tokenToGrapheme = new Map<string, string>();

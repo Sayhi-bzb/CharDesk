@@ -2,7 +2,6 @@ type CanvasSessionActivationIntent = Readonly<{
   generation: number;
 }>;
 
-/** Arbitrates commands that may replace the active Canvas after async work. */
 export class CanvasSessionActivationCoordinator {
   #generation = 0;
 

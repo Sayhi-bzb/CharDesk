@@ -54,7 +54,6 @@ test('range movement previews without document/history writes, commits once, and
     expect(session.rangePreview).toBeNull();
     expect(session.plane.materialize()).toEqual(original);
     expect(session.canUndo).toBe(false);
-    // Escape clears selection after canceling. Re-select and commit the drag.
     click(session, 0);
     click(session, 2, 0, true);
     const seen: string[] = [];

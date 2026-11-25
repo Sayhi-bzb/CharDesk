@@ -17,7 +17,6 @@ import {
   type MinimapTransform,
 } from '@chardesk/editor-core/minimap/geometry';
 
-// Terminal rows are approximately twice as tall as columns are wide.
 const ROW_ASPECT = 2;
 export const minimapPanel = (width: number, height: number): CellRect | null =>
   width >= 60 && height >= 18 ? { x: width - 30, y: height - 13, width: 28, height: 10 } : null;
@@ -26,7 +25,6 @@ export type MinimapFrame = {
   panel: CellRect;
   transform: MinimapTransform;
   viewport: CellRect;
-  /** Two sample rows per terminal row; zero is empty, other values index colors + 1. */
   pixels: Uint32Array;
   colors: readonly MinimapColor[];
   hasContent: boolean;
@@ -58,11 +56,9 @@ export class TerminalMinimap {
     else
       for (const y of this.#rows.keys())
         if (dirty.some((box) => y >= box.y && y < box.y + box.height)) this.#rows.delete(y);
-    // Re-read whole affected rows so deletes, wide glyphs and merging color runs are exact.
     const ranges: (CellRect | undefined)[] = [];
     if (!dirty) ranges.push(undefined);
     else {
-      // Do not ask the plane for exact content bounds: that can itself resolve every cell.
       const left = Math.min(this.#bounds?.x ?? Infinity, ...dirty.map((box) => box.x));
       const right = Math.max(
         this.#bounds ? this.#bounds.x + this.#bounds.width : -Infinity,
@@ -226,7 +222,6 @@ export class TerminalMinimap {
       colors.push(group.color);
       for (let i = 0; i < pixels.length; i++) {
         const weight = weights[i]!;
-        // Relative tolerance preserves tiny distant glyphs while fencing float-noise ties.
         if (weight > best[i]! + Math.max(weight, best[i]!) * Number.EPSILON * 32) {
           best[i] = weight;
           pixels[i] = colors.length;

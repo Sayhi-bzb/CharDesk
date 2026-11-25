@@ -63,8 +63,6 @@ export type CanvasHistoryCheckpoint = {
   cancel: () => void;
 };
 
-// The inverse describes the exact effective Cell footprint; null means a no-op
-// patch. Other semantic mutations may omit this detail.
 type CanvasMutationListener = (
   envelope: CanvasMutationEnvelope,
   inverse?: CellPlaneOperation | null
@@ -241,7 +239,6 @@ export class CanvasDocumentRegistry {
       throw new CanvasVersionConflict(documentId, baseVersion, currentVersion);
   };
 
-  /** Synchronous commit uses the same mutation/history port as direct editor commands. */
   commitContentPatchAt = (
     address: CanvasDocumentAddress,
     patch: CellPlanePatch,
@@ -264,7 +261,6 @@ export class CanvasDocumentRegistry {
       }
     });
 
-  /** A detached projection paired with its document-wide content version. */
   captureContentAt = (address: CanvasDocumentAddress) => {
     const document = this.#documents.get(address.documentId);
     const page = document ? readCanvasYPage(document.root, address.pageId) : null;
@@ -274,7 +270,6 @@ export class CanvasDocumentRegistry {
     return { version, reader: index as CanvasSurfaceReader, dispose: () => index.dispose() };
   };
 
-  /** Detached content and history for asynchronous preparation; never publishes to this Registry. */
   forkContentDocument = (documentId: string) => {
     const source = this.#documents.get(documentId);
     if (!source) throw new Error(`Canvas document not found: ${documentId}`);
@@ -635,7 +630,6 @@ export class CanvasDocumentRegistry {
     this.#lifecycle = lifecycle;
   };
 
-  /** Installs a document that has already completed external persistence restore. */
   adoptDocument = (id: string, doc: Y.Doc) => {
     this.#assertActive();
     const previous = this.#documents.get(id);
@@ -911,7 +905,6 @@ export class CanvasDocumentRegistry {
     return true;
   };
 
-  /** Releases an inactive runtime document without deleting persisted content. */
   releaseDocument = (id: string) => this.#disposeDocument(id, false);
 
   destroyDocument = (id: string) => this.#disposeDocument(id, true);

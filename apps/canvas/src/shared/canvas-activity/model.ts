@@ -1,4 +1,3 @@
-/** Half-open Cell intervals. Rectangles are only a presentation of this footprint. */
 export type ActivityRange = Readonly<{ y: number; from: number; to: number }>;
 type Address = Readonly<{ canvasId: string; pageId: string }>;
 type Stamp = Readonly<{ clock: number; id: string }>;
@@ -19,7 +18,6 @@ export type CanvasActivityMarker = Address & Readonly<{
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const DELETION_RETENTION_MS = 15_000;
-// This is a bounded recent-activity journal, never a second document/history log.
 const EVENT_LIMIT = 512;
 const compare = (a: Stamp, b: Stamp) => a.clock - b.clock || a.id.localeCompare(b.id);
 const sameAddress = (a: Address, b: Address) => a.canvasId === b.canvasId && a.pageId === b.pageId;
@@ -80,7 +78,6 @@ const isEvent = (value: unknown): value is Event => {
     && typeof e.deletion === 'boolean' && Array.isArray(e.ranges) && e.ranges.every(isRange);
 };
 
-/** Replaying ordered semantic events makes late cross-tab writes respect deletion/acknowledgement. */
 export class CanvasActivityStore {
   #journal: Journal = { events: [] };
   #clock = 0;
@@ -120,8 +117,6 @@ export class CanvasActivityStore {
     let ordered = [...events.values()].sort(compare);
     this.#clock = Math.max(this.#clock, ordered.at(-1)?.clock ?? 0, floor?.clock ?? 0);
     const cutoff = this.#now() - RETENTION_MS;
-    // Drop a prefix only: a retained acknowledgement must never lose its newer
-    // invalidation while retaining an older publication.
     let firstRetained = Math.max(0, ordered.length - EVENT_LIMIT);
     ordered.forEach((e, i) => {
       if ((floor && compare(e, floor) <= 0) || e.at < cutoff) firstRetained = Math.max(firstRetained, i + 1);

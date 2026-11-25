@@ -400,7 +400,6 @@ export function createVerificationPlan(options, changes, projects = loadWorkspac
   if ((phase === 'all' || phase === 'cell-e2e') && cell.active) {
     const browserNames = cell.dualBrowser ? ['chromium', 'webkit'] : ['chromium']
     const browserProjects = options.cellProject ? browserNames.filter(project => project === options.cellProject) : browserNames
-    // Batch unfiltered suites into one browser launch; filtered suites keep their own selector.
     const unfiltered = cell.browser.filter(suite => suite.grep === null).map(suite => suite.file)
     const suites = cell.browser.filter(suite => suite.grep !== null)
       .map(suite => ({ files: [suite.file], grep: suite.grep }))

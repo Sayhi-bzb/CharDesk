@@ -88,7 +88,6 @@ const walkUncachedRows = (
   return { width: Math.max(widest, column), height: row + 1 };
 };
 
-/** Shared Cell geometry for measuring and painting ordinary multiline text. */
 export const walkCellTextRows = (
   text: string,
   widthLimit: number,
@@ -182,7 +181,6 @@ const walkFullWindow = (
   });
 };
 
-/** Visit only visible rows of static text, retaining the full walk as the small-text fallback. */
 export const walkCellTextRowsInRange = (
   text: string,
   widthLimit: number,

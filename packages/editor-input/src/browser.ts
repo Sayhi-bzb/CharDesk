@@ -21,7 +21,6 @@ export function browserKeyInput(event: KeyboardEvent) {
 export type BrowserKeymap = ReturnType<typeof createBrowserInput>['keymap'];
 export const browserMetadata = () => createHtmlKeymapHost(document.documentElement).metadata;
 
-/** One capture entry for application shortcuts, including portals and managed text input. */
 export function createBrowserInput(root: HTMLElement = document.documentElement) {
   const view = root.ownerDocument.defaultView!;
   const host = createHtmlKeymapHost(root);
@@ -66,7 +65,6 @@ export function createBrowserInput(root: HTMLElement = document.documentElement)
   };
 }
 
-/** Component input callbacks participate in the library's ordering and consumption. */
 export function registerBrowserHandler(
   keymap: Keymap<HTMLElement, HtmlKeymapEvent>,
   options: {

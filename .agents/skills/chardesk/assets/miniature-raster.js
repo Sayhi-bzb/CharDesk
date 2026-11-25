@@ -1,5 +1,3 @@
-// Definitions only: combine with procedural-frame.js and a scene-specific caller.
-// Orthographic view from +x,+y,+z; +y is up, larger x+y+z is nearer.
 function createMiniatureRaster({ width, height, scale, origin, background = null }) {
   if (!Number.isSafeInteger(width) || width <= 0 || !Number.isSafeInteger(height) || height <= 0 || !Number.isFinite(scale) || scale <= 0) throw new RangeError("Expected positive dimensions and scale");
   if (!origin || origin.length !== 2 || !origin.every(Number.isFinite)) throw new TypeError("Expected a finite screen origin");
@@ -36,7 +34,6 @@ function createMiniatureRaster({ width, height, scale, origin, background = null
       mask[i] = 1;
     }
   }
-  // Convex planar polygons only; triangulate other meshes explicitly.
   function poly(points, value, alpha = 1) {
     for (let i = 1; i < points.length-1; i++) triangle(points[0], points[i], points[i+1], value, alpha);
   }

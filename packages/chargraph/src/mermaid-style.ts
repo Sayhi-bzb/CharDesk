@@ -9,7 +9,6 @@ import {
   type CharDeskRenderThemeToken,
 } from "./render-theme.js";
 
-/** Public semantic style contract shared by Mermaid renderers and hosts. */
 export const MERMAID_STYLE_ROLES = [
   "title",
   "node.text",

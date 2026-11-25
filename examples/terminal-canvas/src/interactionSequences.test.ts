@@ -57,7 +57,6 @@ for (const kitty of [false, true]) {
           await f.click(x, y);
           expect(f.model.selection).toBeNull();
           if (erase) {
-            // Forward Delete erases the pointed cell, without moving the cursor.
             f.setup.mockInput.pressKey('\x1b[3~');
             expected.delete(`${x},${y}`);
           } else {

@@ -267,8 +267,6 @@ export async function startBroker({ config = readConfig(), idleMs = 30_000, time
       while (requests.status.activeRequests && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
       requests.failAll(new BridgeError('bridge_unavailable', 'Local MCP bridge stopped.'));
       for (const socket of sockets.clients) socket.terminate();
-      // Keep the elected port until owned metadata is removed, so a replacement
-      // cannot publish a new record between our instance check and unlink.
       try {
         const saved = JSON.parse(await readFile(config.pairingFile, 'utf8'));
         if (saved.instanceId === instanceId) await unlink(config.pairingFile);
@@ -282,7 +280,6 @@ export async function startBroker({ config = readConfig(), idleMs = 30_000, time
     return stopping;
   }
 
-  // Binding is the singleton election. Losing candidates never touch shared files.
   try {
     await new Promise((resolve, reject) => { http.once('error', reject); http.listen(config.port, '127.0.0.1', resolve); });
     credentials = await loadCredentials(config.credentialsFile);

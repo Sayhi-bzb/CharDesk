@@ -133,7 +133,7 @@ for (const kitty of [false, true]) {
       f.model.commands.selectAll();
       const selection = structuredClone(f.model.selection),
         original = f.model.plane.materialize();
-      await f.right(2); // crab follower
+      await f.right(2);
       expect(f.menu.isOpen).toBe(true);
       expect(f.model.selection).toEqual(selection);
       expect(f.model.editor.commands.canExecute('terminal.copy', undefined)).toBe(true);
@@ -225,7 +225,6 @@ test('disabled items cannot execute; keyboard navigation skips them and Enter ex
     await f.item('copy-ansi');
     expect(f.menu.isOpen).toBe(true);
     expect(f.writes).toHaveLength(0);
-    // Only Paste remains enabled; wrap past disabled actions and separator.
     f.setup.mockInput.pressArrow('down');
     f.setup.mockInput.pressEnter();
     expect(f.menu.isOpen).toBe(false);
@@ -504,7 +503,6 @@ for (const delivery of ['written', 'failed', 'unavailable'] as const) {
         selection = structuredClone(f.model.selection);
       f.menu.open();
       expect(f.menu.items[2]?.enabled).toBe(true);
-      // Navigation skips the separator and reaches Delete, then wraps to Copy.
       for (let n = 0; n < 4; n++) f.setup.mockInput.pressArrow('down');
       f.setup.mockInput.pressArrow('down');
       await f.item('snapshot-png');

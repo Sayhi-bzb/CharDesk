@@ -11,7 +11,6 @@ import type {
 import { EDITOR_COMMAND_META } from './catalog';
 import { editorHandlers, editorCheckers } from './handlers';
 
-// Combined checkers
 const ACTION_CHECKERS: Partial<Record<EditorActionId, ActionChecker>> = {
   ...editorCheckers,
 };

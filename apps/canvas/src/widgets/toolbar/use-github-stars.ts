@@ -17,7 +17,6 @@ export function useGitHubStars(enabled: boolean) {
         setCount(Number(stars));
       })
       .catch(() => {
-        // Star metadata is optional; leave the menu usable when the snapshot is unavailable.
       });
 
     return () => controller.abort();

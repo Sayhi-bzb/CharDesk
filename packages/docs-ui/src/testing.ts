@@ -77,8 +77,6 @@ export const cellPoint = async (surface: Locator, x: number, y: number,
   const metrics = await readCellMetrics(surface);
   const origin = await probeOrigin(surface);
   if (scrollIntoView) await canvasFor(surface).evaluate((canvas, { y, metrics, origin, guardCells }) => {
-    // Cell semantic nodes are offscreen proxies; scroll their painted point into
-    // nested native viewports (navigation, dialogs) before scrolling the page.
     for (let ancestor = canvas.parentElement; ancestor && ancestor !== document.body;
       ancestor = ancestor.parentElement) {
       if (!/auto|scroll/.test(getComputedStyle(ancestor).overflowY) ||
@@ -119,7 +117,6 @@ export const copyCellRange = async (surface: Locator): Promise<string> =>
     return clipboard.getData("text/plain");
   });
 
-/** Click the painted Cell geometry, rather than the offscreen semantic proxy. */
 export const clickCellTarget = async (target: Locator) => {
   const id = await target.getAttribute('data-cell-semantic-id');
   if (!id) throw new Error('Target is not a Cell UI semantic node.');

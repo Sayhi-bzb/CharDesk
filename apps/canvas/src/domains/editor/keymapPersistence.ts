@@ -76,9 +76,7 @@ export const persistEditorKeymap = <Context>(
   };
   try {
     storage.setItem(EDITOR_KEYMAP_STORAGE_KEY, JSON.stringify(value));
-  } catch {
-    // Storage is an optional device-local adapter.
-  }
+  } catch { /* empty */ }
 };
 
 export const connectEditorKeymapPersistence = <Context>(

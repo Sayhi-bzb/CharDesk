@@ -47,7 +47,6 @@ export const pressTargetAtPoint = (
   }) ?? null;
 };
 
-/** Owns transient down/up feedback; activation remains a WidgetCommand concern. */
 export class PressManager {
   #pointer: PointerPress | null = null;
   #key: KeyPress | null = null;

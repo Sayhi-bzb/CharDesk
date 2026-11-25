@@ -41,7 +41,7 @@ async function fixture(platform: NodeJS.Platform = 'darwin', clipboard?: Termina
   const surface = new CanvasSurface(setup.renderer, model, 'Style', platform);
   setup.renderer.root.add(surface);
   const detach = attachControls(surface, () => {}, clipboard, workspace);
-  surface.inspector!.close(); // Individual cases explicitly open the toolbar.
+  surface.inspector!.close();
   surface.setTool('edit');
   model.viewport = { ...model.viewport, x: 0, y: 0 };
   await setup.renderOnce();

@@ -77,7 +77,6 @@ export type MarkdownTextStyles = Partial<
 
 export type MarkdownRenderOptions = {
   forced?: boolean;
-  /** Auto preserves paragraphs without Markdown evidence. */
   auto?: boolean;
   proseWrapWidth?: number;
   rules?: Partial<MarkdownTextRules>;
@@ -145,7 +144,6 @@ type RenderContext = {
   extensions: readonly MarkdownSyntaxExtension[];
 };
 
-/** Block spacing is structural layout policy, not a boolean rendering mode. */
 type BlockSpacing = "tight" | "source" | "loose";
 type RenderedBlockKind =
   | "content"
@@ -175,9 +173,7 @@ type LocatedRender = {
 };
 
 type RenderedBlock = {
-  /** Layout operates on rows before they are flattened into the final stream. */
   lines: CharGraphFragment[][];
-  /** Original stream is retained so source ranges on existing newlines survive. */
   fragments: CharGraphFragment[];
   inlineAlignment: CharGraphInlineAlignment;
   kind: RenderedBlockKind;
@@ -535,8 +531,6 @@ const renderList = async (
       contentTokens = [];
     };
 
-    // Keep block order from Marked. A nested list is not always the final
-    // child; code blocks and follow-up paragraphs must remain where authored.
     for (const child of item.tokens) {
       const childRange = locateRaw(context.source, child.raw, itemRange, childCursor);
       childCursor = Math.max(childCursor, childRange.to);

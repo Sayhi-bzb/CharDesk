@@ -41,7 +41,6 @@ test("Radio mouse and arrow selection share one semantic group", async ({ page }
   await expect(group.getByRole("radio")).toHaveCount(3);
   await clickCellOwner(page, surface, "component-radio-dark");
   await expect(group.getByRole("radio", { name: "Dark", exact: true })).toHaveAttribute("aria-checked", "true");
-  // Focus exit cancels any optional confirmation before keyboard navigation.
   await page.mouse.click(1, 100);
   await group.getByRole("radio", { name: "Dark", exact: true }).focus();
   await page.keyboard.press("ArrowDown");

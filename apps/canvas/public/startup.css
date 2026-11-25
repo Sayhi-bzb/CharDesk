@@ -34,8 +34,7 @@ html, body { margin: 0; min-height: 100%; }
   display: block;
   margin: 0 auto 16px;
   image-rendering: pixelated;
-  /* The SVG also follows the OS scheme. Normalize it to the app theme so an
-     explicit light theme never inherits a white system-dark startup icon. */
+
   filter: brightness(0);
 }
 .dark .startup-body img { filter: brightness(0) invert(1); }

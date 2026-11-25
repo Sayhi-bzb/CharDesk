@@ -36,9 +36,7 @@ type Translate = ReturnType<typeof useUiI18n>["t"];
 const writeStatus = (status: OnboardingStatus) => {
   try {
     writeOnboardingStatus(status);
-  } catch {
-    // The tour still works when storage is unavailable; it may be offered again.
-  }
+  } catch { /* empty */ }
 };
 
 const waitForElement = (selector: string, timeout = 5000) =>

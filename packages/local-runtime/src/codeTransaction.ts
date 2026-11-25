@@ -10,7 +10,6 @@ import type { LocalSessions } from './sessions.ts';
 import { contentFailure } from './request.ts';
 import { randomUUID } from 'node:crypto';
 
-/** No asynchronous work runs against the live document or its history checkpoint. */
 export async function runCodeTransaction(
   host: LocalCanvasHost,
   sessions: LocalSessions,
@@ -58,7 +57,6 @@ export async function runCodeTransaction(
     live.assertContentVersion(address.documentId, baseVersion);
     let receipt;
     if (draft.undo.length) {
-      // Undo and writes cannot share one Code call. Draft history established eligibility.
       for (const operationId of draft.undo)
         if (!live.undoOperation(operationId, address.documentId, address.pageId))
           throw new Error('The operation is no longer undoable.');

@@ -83,7 +83,6 @@ const readRecipe = (source: CSSStyleDeclaration): CellUiRecipe => {
   return {};
 };
 
-// One temporary color resolver per theme read, never DOM per Cell.
 export const readCellCssTheme = (element: HTMLElement): CellCssTheme => {
   const view = element.ownerDocument.defaultView!;
   const source = view.getComputedStyle(element);

@@ -17,10 +17,6 @@ type CanvasCommandStatePort<State extends object = object> = Pick<
   'getState' | 'setState'
 >;
 
-/**
- * Publishes one committed Canvas snapshot for a synchronous command, while
- * allowing nested commands to read each other's pending state.
- */
 export class CanvasStateCommitCoordinator<
   State extends object = object,
 > implements CanvasCommandStatePort<State> {

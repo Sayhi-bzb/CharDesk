@@ -2,7 +2,6 @@ import type { Point } from '@chardesk/cell-plane/types';
 
 export const DRAWING_POINT_LIMIT = 100_000;
 export const DRAWING_WORK_LIMIT = 200_000;
-// Keep room for wide followers and the projection halo at either integer edge.
 export const DRAWING_COORDINATE_LIMIT = Number.MAX_SAFE_INTEGER - 2;
 export class DrawingLimitError extends Error {
   constructor() {

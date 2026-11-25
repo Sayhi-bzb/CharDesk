@@ -9,7 +9,6 @@ const registry = 'https://registry.npmjs.org/@chardesk%2fcli/latest';
 type Cache = { checkedAt: number; latest: string };
 type Dependencies = { fetch?: typeof fetch; now?: () => number; timeout?: number };
 
-/** Created only for interactive CLI startup. Never prints or runs an installer. */
 export class CliUpdates implements TerminalUpdates {
   state: UpdateState;
   readonly commands = [
@@ -118,9 +117,7 @@ export class CliUpdates implements TerminalUpdates {
           if (!this.#disposed && this.#automatic) this.#accept(cache.latest);
           return;
         }
-      } catch {
-        /* Cache is optional. */
-      }
+      } catch { /* empty */ }
       if (!this.#automatic || this.#disposed) return;
     }
     const previous = this.state;

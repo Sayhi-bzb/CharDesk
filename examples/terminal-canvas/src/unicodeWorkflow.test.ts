@@ -41,7 +41,7 @@ test('wide selection survives drag, style, rich copy/cut/paste, history and a na
     await setup.renderOnce();
     const original = model.plane.materialize();
     await click(0, 0);
-    await click(4, 0, true); // emoji follower: include the complete glyph, exclude B
+    await click(4, 0, true);
     expect(model.selectionCoverage.contains({ x: 3, y: 0 })).toBe(true);
     expect(model.selectionCoverage.contains({ x: 4, y: 0 })).toBe(true);
     expect(model.selectionCoverage.contains({ x: 5, y: 0 })).toBe(false);

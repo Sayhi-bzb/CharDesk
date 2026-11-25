@@ -45,7 +45,6 @@ test(`${control.name} presents two complete inverse/restore cycles after release
     });
     observer.observe(surface, { attributes: true, attributeFilter: ["data-cell-confirmation-phase"] });
     return pixel();
-  // Sample stable chrome spacing: the value marker itself changes on activation.
   }, { probeId, x: cell.x + control.sampleOffset, y: cell.y, originX: origin[0]!, originY: origin[1]!,
     guard: CELL_SURFACE_GUARD_CELLS, cellWidth: probe.presentation!.metrics.cellWidth,
     cellHeight: probe.presentation!.metrics.cellHeight });

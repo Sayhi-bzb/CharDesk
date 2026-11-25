@@ -1,7 +1,6 @@
 import type { KeymapEvent, KeymapHost } from '@opentui/keymap';
 import { createInputKeymap } from './engine.js';
 
-/** Gives a Host attachment its own lifetime without closing the renderer or DOM root. */
 export function createInputSession<T extends object, E extends KeymapEvent>(
   host: KeymapHost<T, E>,
   options: { sequenceTimeoutMs?: number } = {}

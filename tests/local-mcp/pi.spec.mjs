@@ -53,7 +53,6 @@ test("Pi's real model reads, writes a GPU explanation, and verifies the live Can
     pi.once("error", reject);
     pi.once("exit", (code) => reject(new Error(`Pi exited early (${code}): ${diagnostics.slice(-2000)}`)));
   });
-  // Observe a premature startup failure without an unhandled rejection.
   void settled.catch(() => undefined);
   try {
     await expect.poll(async () => {

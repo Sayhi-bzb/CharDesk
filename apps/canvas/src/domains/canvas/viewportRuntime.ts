@@ -37,10 +37,6 @@ const cloneViewport = (viewport: CanvasViewportState): CanvasViewportState => ({
   zoom: viewport.zoom,
 });
 
-/**
- * The active-viewport command boundary. A mounted workspace binds its active
- * view; headless runtimes use the built-in single-view fallback.
- */
 export class CanvasViewportRuntime {
   #fallback: CanvasViewportState;
   #port: CanvasViewportPort | null = null;
@@ -115,7 +111,6 @@ export class CanvasViewportRuntime {
     this.#emit();
   };
 
-  /** Updates the headless fallback without competing with a mounted view. */
   resetFallback(viewport: CanvasViewportState) {
     this.#fallback = normalizeCanvasViewport(viewport);
     if (this.#pendingPlacement) {

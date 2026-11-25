@@ -108,11 +108,8 @@ import { paintReorderPreview, type ReorderDrag } from "./reorder-preview.js";
 import { textViewportCommands } from "./text-viewport.js";
 import { scrollViewportCommands } from "./scroll.js";
 
-// Hosts and browser tests may replay PointerEvents without a native pointer
-// capture slot. Native pointer streams still capture normally; an unavailable
-// slot does not cancel Cell gesture tracking.
 const tryCapturePointer = (target: Element, pointerId: number): void => {
-  try { target.setPointerCapture(pointerId); } catch { /* synthetic pointer */ }
+  try { target.setPointerCapture(pointerId); } catch { /* empty */ }
 };
 import { usePointerAppearance } from "./browser-hover.js";
 import { pressTargetAtPoint } from "./press.js";
@@ -390,8 +387,6 @@ const presentFrame = (
   const height = (window.height + 2 * guardCells) * metrics.cellHeight;
   const dpr = Math.max(1, globalThis.devicePixelRatio || 1);
   const regions = [visible];
-  // Font ink may cross Cell boundaries, so presentation repaints the whole
-  // visible window while the headless frame keeps precise invalidation data.
   prepareCharDeskCanvasSurface(canvas, context, width, height, dpr);
   if (!plane.transparent) {
     context.fillStyle = palette.background;
@@ -630,13 +625,9 @@ export type CellSurfaceProps = Readonly<{
   onCommand: (command: WidgetCommand) => void;
   onHoverChange?: (targetId: WidgetId | null) => void;
   onContextMenu?: (event: ReactMouseEvent<HTMLDivElement>) => void;
-  /** Receives the generic drag transaction emitted by the browser layer. */
   onDragStateChange?: (event: CellDragEvent) => void;
-  /** Requests host-owned scrolling while a drag approaches a viewport edge. */
   onAutoScrollRequest?: (request: CellAutoScrollRequest) => void;
-  /** Receives a lightweight pointer/gesture/command trace for development tooling. */
   onDebugTrace?: (event: CellInteractionTraceEvent) => void;
-  /** Enables the bounded interaction trace buffer used by browser debug tooling. */
   debugTrace?: boolean;
   linearSelection?: boolean;
   cellRange?: CellRangeSnapshot | null;
@@ -651,7 +642,6 @@ export type CellOverlayViewportPolicy = Readonly<{
   maxColumns?: number;
 }>;
 
-/** Extra Cell rows reserved for portal overlays when a host does not opt in. */
 export const CELL_SURFACE_AUTO_OVERLAY_ROWS = 3;
 
 export const CELL_SURFACE_PROBE_PROPERTY = "__chardeskCellProbeV5" as const;
@@ -846,9 +836,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     onCellRangeCommand,
   } = props;
   const guardCells = Math.max(0, Math.trunc(requestedGuardCells));
-  // A one-row toolbar is still a valid CellSurface host for Tooltip/Popover.
-  // Keep the explicit prop as an escape hatch, but give portal layers a small
-  // independent canvas by default so callers do not need to size overlays.
   const overlayViewport = useMemo(() => {
     if (requestedOverlayViewport) return { ...requestedOverlayViewport };
     const policy = requestedOverlayPolicy ?? { mode: "auto" as const };
@@ -1336,7 +1323,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       overlayWidth: overlayViewport.width,
       overlayHeight: overlayViewport.height,
     };
-    // The headless runtime is an external store; publish its committed snapshot.
     setFrame(next);
   }, [controller, palette.color, palette.background, activationFlashId, animationTimeMs, children, flushActivationFeedbackCompletion, focusedId, focusVisible, hoveredId, pointerAppearance.scrollbarHoverId, recentScrollId, tooltipTargetId, interactionRevision, manipulatingIds, onCommand, overlayViewport, pressActiveId, recipe, presentation, runtimeActiveFocusId, syncManipulatingIds, theme, feedback, viewport]);
 
@@ -1394,10 +1380,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     );
     canvas.style.top = `${(window?.y ?? 0) * metrics.cellHeight}px`;
     let allPlanesPresented = true;
-    // Portal overlays (tooltips, menus, popovers) use the independent overlay
-    // viewport. The base surface may be only one Cell high while the overlay
-    // intentionally extends beyond it; using the base paint window here clips
-    // a valid tooltip before it reaches the browser canvas.
     for (const plane of current.overlayPlanes) {
       const overlayCanvas = canvasRef.overlay(plane.rootId);
       if (!overlayCanvas) { allPlanesPresented = false; continue; }
@@ -1431,11 +1413,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
           guardCells: 0,
         }
       );
-      // Overlay paint uses a zero guard so its buffer has the exact overlay
-      // dimensions. Its DOM origin still has to share the base content
-      // origin; otherwise the default one-cell base guard shifts every
-      // portal up by one row and desynchronizes visual rows from hit-test
-      // coordinates.
       overlayCanvas.style.left = `${guardCells * metrics.cellWidth}px`;
       overlayCanvas.style.top = `${guardCells * metrics.cellHeight}px`;
     }
@@ -1533,7 +1510,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       }
     }
     if (!samples.length) return;
-    // Explicit loads also cover engines that omit FontFaceSet loading events.
     void loadCharDeskCanvasFonts(samples, {
       metrics,
       ...(fontProfile ? { fontProfile } : {}),
@@ -1905,8 +1881,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
       cancelTransientFeedback();
       return;
     }
-    // A null relatedTarget can mean either page chrome or a transient browser/
-    // React focus gap. Wait for the document to expose its settled owner.
     queueMicrotask(() => {
       const document = surface.ownerDocument;
       if (
@@ -1917,9 +1891,6 @@ export const CellSurface = (props: CellSurfaceProps): ReactNode => {
     });
   };
 
-  // Render-time projection for hosted layers. Event handlers build a fresh
-  // transform when they run; this snapshot keeps all visual children in one
-  // coordinate contract for the current render.
   const renderGeometry = surfaceRef.current ? createCellSurfaceGeometryTransform({
     surface: surfaceRef.current,
     viewport,

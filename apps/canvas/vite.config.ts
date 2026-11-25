@@ -50,17 +50,12 @@ function webMcpOriginTrial(): Plugin {
   };
 }
 
-// https://vite.dev/config/
 export default defineConfig({
   root: import.meta.dirname,
-  // Canvas owns its hostname; absolute assets keep /blackboard and /s/* links bootable.
   base: process.env.VITE_BASE_PATH || "/",
   plugins: [staticSiteDevRedirect(), webMcpOriginTrial(), react(), tailwindcss()],
   optimizeDeps: {
     include: ["@tanstack/react-table"],
-    // QuickJS resolves its WASM loader through a nested conditional export.
-    // Let Vite serve that graph natively; prebundling it leaves a stale
-    // /node_modules/.vite/deps/emscripten-module URL in dev after reloads.
     exclude: [
       "quickjs-emscripten",
       "quickjs-emscripten-core",

@@ -261,7 +261,7 @@ export function LocalWorkspacePage() {
           if (exported?.ok) await bindCloudSession(cloud.user.id, restored.id, work.id, revision,
             local!.name, exported.value.content, work.conflictWith);
         }
-        catch { /* Import succeeded; a missing sync binding must not hide the restored local copy. */ }
+        catch { /* empty */ }
       }
       navigateApp('/');
     } catch { setError(true); }

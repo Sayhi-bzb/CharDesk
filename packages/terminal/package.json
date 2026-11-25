@@ -6,6 +6,9 @@
   "exports": {
     "./*": "./src/*.ts"
   },
+  "scripts": {
+    "build:effects": "bun scripts/build-tachyonfx.ts"
+  },
   "dependencies": {
     "@chardesk/canvas-templates": "*",
     "@chardesk/cell-core": "*",

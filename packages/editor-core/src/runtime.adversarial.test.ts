@@ -238,8 +238,6 @@ describe('clipboard races and format fallback', () => {
   });
 });
 
-// Fixed seeds make long traces reproducible; expected states are stored before
-// each mutation so undo/redo are checked without reusing editing planners.
 test.each(Array.from({ length: 12 }, (_, i) => i + 1))(
   'seed %i: mixed edits preserve footprints, undo/redo and saved state',
   (seed) => {

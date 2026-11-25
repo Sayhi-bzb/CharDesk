@@ -194,7 +194,6 @@ const paintTableChrome = (
       }
     }
   } else if (outlined) {
-    // Row backgrounds own the gaps. Paint their separators after the fill, before cell text.
     for (const cell of cellsFor(node).slice(1)) {
       const x = cell.layoutBounds.x - 1;
       for (let y = entry.layoutBounds.y; y < entry.layoutBounds.y + entry.layoutBounds.height; y += 1) {
@@ -253,7 +252,6 @@ export const paintScene = (
       const decorationClip = intersectSceneRects(entry.decorationBounds, outerClip);
       const contentClip = intersectSceneRects(entry.contentClip, region);
 
-      // Surface: state and overlay backgrounds establish the Cell style first.
       if (style.backgroundColor || (
         isActionableKind(node.kind)
         && (node.pressActive || node.activationFlash || node.selected || (node.focused && node.focusVisible))
@@ -279,7 +277,6 @@ export const paintScene = (
         );
       }
 
-      // Chrome: glyphs are painted after surfaces so state fills cannot erase them.
       if (node.kind === "markdown-block" && node.markdownRole === "blockquote") {
         for (let y = entry.layoutBounds.y; y < entry.layoutBounds.y + entry.layoutBounds.height; y += 1) {
           buffer.writeGrapheme(entry.layoutBounds.x, y, "│", id, style, outerClip, "over", "");
@@ -345,7 +342,6 @@ export const paintScene = (
         );
       }
 
-      // Content: local text and editor glyphs stay within contentClip.
       if (node.markdownCenteredText !== null) {
         const centered = node.markdownCenteredText;
         const left = entry.contentClip.x;
@@ -437,7 +433,6 @@ export const paintScene = (
         }
       }
 
-      // Decoration: interaction affordances and scrollbars remain topmost for this Widget.
       const promptGuardX = (node.kind === "text-input" || node.kind === "combobox-input")
         && inlineChrome.leadingGuardX !== inlineChrome.trailingGuardX
         ? inlineChrome.leadingGuardX : null;
@@ -669,7 +664,6 @@ export const paintScene = (
       if (entry.scrollMetrics) paintScrollbars(buffer, node, entry, theme, style, outerClip);
     }
   }
-  // All line connections are resolved in Scene; paint uses their declared bounds.
   for (const id of scene.paintList) {
     const node = tree.nodes.get(id)!, entry = scene.entries.get(id)!;
     if (node.kind !== "splitter") continue;
@@ -689,7 +683,6 @@ export const paintScene = (
       }
     }
   }
-  // A vertical handle owns one Cell; a horizontal handle owns two Cells.
   for (const id of scene.paintList) {
     const node = tree.nodes.get(id)!, entry = scene.entries.get(id)!;
     if (node.kind !== "resize-handle" || node.disabled || !(node.manipulating || node.hovered)) continue;

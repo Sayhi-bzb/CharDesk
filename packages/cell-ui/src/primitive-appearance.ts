@@ -9,7 +9,6 @@ type PrimitiveVisualState = Readonly<{
   flash: boolean;
 }>;
 
-/** Continuous controls emphasize the handle, never the whole track. */
 export const resolveThumbAppearance = (
   base: CellTextStyle,
   state: PrimitiveVisualState & Readonly<{ manipulating: boolean }>,
@@ -20,7 +19,6 @@ export const resolveThumbAppearance = (
     ? theme.sliderEmphasizedThumb : theme.sliderThumb,
 });
 
-/** A feedback phase replaces highlight; inversion is never additive. */
 export const resolvePrimitiveAppearance = (
   base: CellTextStyle,
   state: PrimitiveVisualState,
@@ -31,9 +29,6 @@ export const resolvePrimitiveAppearance = (
     ...base,
     ...(state.disabled ? theme.disabledStyle : {}),
   };
-  // An explicit hover style is already the caller's final visual token. This
-  // is what lets material regions keep their hue while the default path below
-  // continues to provide the legacy inversion for ordinary controls.
   if (state.highlighted && hoverStyle && !state.flash && !state.confirming) {
     return { ...hoverStyle, ...(state.disabled ? theme.disabledStyle : {}) };
   }

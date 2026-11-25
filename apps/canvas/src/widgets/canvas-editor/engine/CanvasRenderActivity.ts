@@ -11,7 +11,6 @@ type ActivityListener = (
 const VIEWPORT_SETTLE_MS = 120;
 const CONTENT_SETTLE_MS = 80;
 
-/** Coordinates short-lived interaction quality without coupling input devices to rendering. */
 export class CanvasRenderActivity {
   readonly #listeners = new Set<ActivityListener>();
   #viewportTimer: ReturnType<typeof setTimeout> | null = null;

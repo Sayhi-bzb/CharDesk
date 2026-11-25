@@ -12,7 +12,7 @@ let expiryTimer: ReturnType<typeof setTimeout> | undefined;
 const restore = () => {
   try {
     canvasActivityStore.merge(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null'));
-  } catch { /* Activity remains available when browser storage is unavailable. */ }
+  } catch { /* empty */ }
 };
 
 let stopPersistence: (() => void) | undefined;
@@ -23,7 +23,7 @@ if (typeof window !== 'undefined') {
   const persistAndSchedule = () => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(canvasActivityStore.getJournal()));
-    } catch { /* Keep the in-memory projection when storage is full or disabled. */ }
+    } catch { /* empty */ }
     clearTimeout(expiryTimer);
     const remaining = canvasActivityStore.getExpiresAt() - Date.now();
     if (Number.isFinite(remaining)) expiryTimer = setTimeout(canvasActivityStore.refresh, Math.min(2_147_483_647, Math.max(1, remaining)));
@@ -37,8 +37,7 @@ if (typeof window !== 'undefined') {
     else canvasActivityStore.merge(event.data);
   });
   channel?.postMessage({ type: 'sync' });
-  // Old per-call dots cannot be reconciled with actual Cell changes. Retire them.
-  try { window.localStorage.removeItem('chardesk.canvas-activity.v1'); } catch { /* optional cleanup */ }
+  try { window.localStorage.removeItem('chardesk.canvas-activity.v1'); } catch { /* empty */ }
 }
 
 export const recordCanvasActivity = (input: Parameters<CanvasActivityStore['record']>[0]) => {

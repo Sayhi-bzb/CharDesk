@@ -14,7 +14,6 @@ export type AxisTransform = Readonly<{
   f?: number;
 }>;
 
-/** Snap absolute edges, never dimensions, so adjacent regions share an edge. */
 export const alignCanvasRect = (
   bounds: CharDeskNormalizedCellRect,
   transform?: AxisTransform

@@ -30,7 +30,7 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
     detach = attachControls(surface, () => {});
     detachTrace = attachInputTrace(surface, path);
     surface.settings.set('selectionColor', 6);
-    expect(() => attachInputTrace(surface, path)).toThrow(); // Existing files are never overwritten.
+    expect(() => attachInputTrace(surface, path)).toThrow();
     surface.setTool('edit');
     model.viewport = { ...model.viewport, x: 0, y: 0 };
     await setup.renderOnce();
@@ -82,7 +82,6 @@ test('real input tracing preserves dispatch, records modifiers and excludes docu
       )
     ).toBe(true);
     expect(events.some((e) => e.kind === 'state' && e.state.contentVersion > 0)).toBe(true);
-    // Associated text remains redacted even when a key reports a Backspace code.
     await setup.mockInput.pressKeys(['\x1b[127;1;80:82:73:86:65:84:69u']);
     const withAssociatedText = await readFile(path, 'utf8');
     expect(withAssociatedText).not.toContain(

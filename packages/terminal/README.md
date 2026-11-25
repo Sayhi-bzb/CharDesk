@@ -6,6 +6,8 @@ compatibility re-exports; tests remain in the example harness during migration.
 
 [Interaction and verification](../../examples/terminal-canvas/README.md) owns terminal
 behavior. [Local runtime](../local-runtime/README.md) owns files and live-instance routing.
+[TachyonFX bridge](tachyonfx/README.md) owns live read/write feedback, its WASM artifact
+and rebuild/verification contracts.
 [Quality coverage](../../examples/terminal-canvas/QUALITY.md) maps terminal contracts
 to automated scenarios and device evidence.
 [Architecture audit](ARCHITECTURE-AUDIT.md) records the original counterexamples

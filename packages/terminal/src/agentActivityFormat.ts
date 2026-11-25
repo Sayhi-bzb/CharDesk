@@ -28,7 +28,6 @@ export function activityTime(timestamp: number, t: Translate, now = Date.now()) 
   return t`${Math.floor(minutes / 1440)}d ago`;
 }
 
-/** Preserve captured argument boundaries; original shell pipelines and quoting are not available. */
 export function formatAgentCommand(argv: readonly string[], platform: NodeJS.Platform) {
   return argv
     .map((value) => {

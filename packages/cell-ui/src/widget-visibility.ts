@@ -11,7 +11,6 @@ export const isWidgetHidden = (tree: WidgetTree, node: WidgetNode): boolean => {
   return false;
 };
 
-/** A mounted drag owner may be clipped while its pointer gesture is active. */
 export const isMountedDragSource = (frame: FrameSnapshot, id: WidgetId): boolean => {
   const node = frame.tree.nodes.get(id);
   const entry = frame.scene.entries.get(id);

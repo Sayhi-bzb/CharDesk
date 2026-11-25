@@ -4,7 +4,6 @@ import { createHash } from 'node:crypto';
 import { OperationCancelled } from './operations.ts';
 import type { AgentIdentity, AgentInvocation } from './agents.ts';
 
-/** Transport metadata is separate from the shared Canvas tool's parameters. */
 export type LocalRequestContext = AgentToolExecutionContext & {
   baseVersion?: string;
   agent?: AgentIdentity;

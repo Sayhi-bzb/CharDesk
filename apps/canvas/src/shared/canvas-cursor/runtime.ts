@@ -25,7 +25,6 @@ const decodeCanvasCursorPreference = (value: unknown): CanvasCursorPreference =>
   return { shape: candidate.shape, blink: candidate.blink };
 };
 
-/** Host-owned visual preference; never enters Canvas document or history state. */
 export function createCanvasCursorRuntime({
   storage = false,
 }: {
@@ -41,9 +40,7 @@ export function createCanvasCursorRuntime({
     listeners.forEach((listener) => listener());
     try {
       if (storage) storage.setItem(CANVAS_CURSOR_STORAGE_KEY, JSON.stringify(snapshot));
-    } catch {
-      // The in-memory preference remains valid when browser storage is unavailable.
-    }
+    } catch { /* empty */ }
   };
   return {
     getSnapshot: () => snapshot,

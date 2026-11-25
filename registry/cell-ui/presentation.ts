@@ -11,7 +11,6 @@ export type CellUiPresentation = "rich" | "text";
 export const resolveCellUiPresentation = (value: CellUiPresentation | undefined): CellUiPresentation =>
   value === "text" ? "text" : "rich";
 
-// Text keeps one readable character recipe; declared appearance remains intact for Rich.
 export const presentedButtonVariant = (presentation: CellUiPresentation, variant: ButtonVariant): ButtonVariant =>
   presentation === "text" ? "outline" : variant;
 

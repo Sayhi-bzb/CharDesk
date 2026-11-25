@@ -114,7 +114,6 @@ export function CanvasSessionSelector({
   const activeSessionButtonRef = useRef<HTMLButtonElement>(null);
   const suppressSelectorFocusRef = useRef(false);
   const deletingRef = useRef(false);
-  // Radix close-autofocus may run before React commits the selection update.
   const renameFlowRef = useRef<RenameFlow | null>(null);
   const selectorTooltipHandle = useMemo(() => TooltipCreateHandle<string>(), []);
   const sessionActionTooltipHandle = useMemo(() => TooltipCreateHandle<string>(), []);

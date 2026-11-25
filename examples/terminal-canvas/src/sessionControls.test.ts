@@ -87,9 +87,8 @@ for (const [name, sequence, platform] of [
       await until(() => Boolean(f.surface.panel?.items.includes('Yes')));
       expect(f.workspace.files).toEqual([file]);
       expect(f.sessions.catalog.get(record.id)).not.toBeNull();
-      f.setup.mockInput.pressEnter(); // Cancel is the default.
+      f.setup.mockInput.pressEnter();
       expect(f.surface.panel?.hint).toContain(platform === 'darwin' ? '⌫ remove' : 'Del remove');
-      // The same key must work for a session whose canvas is already closed.
       await f.sessions.close(file);
       f.setup.mockInput.pressKey(sequence);
       await until(() => Boolean(f.surface.panel?.items.includes('Yes')));
@@ -118,7 +117,6 @@ test('Backspace edits session names and modified deletion keys cannot remove a s
     f.setup.mockInput.pressKey('\x7f');
     expect(f.surface.panel?.input).toBe('');
     await f.setup.mockInput.typeText('New界', 0);
-    // MockInput.typeText splits UTF-16; send the full grapheme as real UTF-8 input.
     f.setup.mockInput.pressKey('👩‍💻');
     expect(f.surface.panel?.input).toBe('New界👩‍💻');
     f.setup.mockInput.pressKey('\x7f');
@@ -463,7 +461,6 @@ test('Session removal is a compact modal over the unchanged session list', async
     expect(frame).not.toContain('Cannot be undone.');
     await f.setup.mockInput.typeText('ignored', 0);
     expect(f.workspace.model.plane.materialize()).toEqual(before);
-    // Escape and outside click pop the child without changing the parent's focus.
     f.escape();
     expect(f.surface.panel).toBe(parent);
     const selected = parent.selected;
@@ -472,7 +469,6 @@ test('Session removal is a compact modal over the unchanged session list', async
     expect(f.surface.panel).toBe(parent);
     expect(parent.selected).toBe(selected);
     expect(f.sessions.catalog.get(record.id)).not.toBeNull();
-    // Enter defaults to Cancel; no second confirmation replaces the list.
     await remove();
     f.setup.mockInput.pressEnter();
     expect(f.surface.panel).toBe(parent);
@@ -501,7 +497,6 @@ test('Session removal is a compact modal over the unchanged session list', async
     expect(await readOptional(external)).toBe(source);
     f.escape();
     f.escape();
-    // Pointer confirmation deletes only the selected managed file.
     const managed = await f.sessions.create('Delete me'),
       owned = f.sessions.forFile(managed)!;
     f.surface.activateDock('documents');

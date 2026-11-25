@@ -59,7 +59,6 @@ describe("Code Mode material projection", () => {
   it("previews and applies a large transparent frame in one render call and one undo", async () => {
     const {canvas,code,execute}=host();
     await canvas.ready;
-    // Execute the actual skill case through QuickJS and the real Canvas renderer.
     const script = [frameHelpers, miniatureRaster, cafeScene, `
       const raster=createMiniatureRaster({width:220,height:180,scale:10,origin:[110,112]});
       const frame=drawMiniatureCafe(raster);

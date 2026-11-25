@@ -52,6 +52,21 @@ panel to stop them. Development builds do not check for releases.
 Agents read and change this local workspace through [CLI Canvas operations](/cli/#read-and-write-canvas-content).
 The [Local MCP](/agents/connect/) and [WebMCP](/agents/webmcp/) connections target browser canvases.
 
+Identified agent reads briefly tint the requested area using the terminal's palette,
+with a stable color per identity. The fill fades without moving your cursor,
+selection or view. These hints do not mark activity records as read.
+
+Identified writes animate with a cursor and fill trail for small changes, or
+reveal rows for larger changes. Render replaces changed rows, erase clears rows
+from bottom to top, and fill changes styles by row. The colored background follows
+the current change and spans spaces continuously; it disappears without fading.
+Content is committed in one operation; animation adds no Undo steps. Any input
+reveals the completed change immediately.
+
+Recent reads and writes outside the view show a colored direction badge at the canvas edge.
+Click it to move to that area. Badges indicate recent locations, not online status
+or historical content; they disappear when the content changes or the hint expires.
+
 The right side of the first footer row shows **Agents**, adding a number when the active canvas has unread
 activity. The number counts calls, including multiple calls by the same agent.
 The unread number uses the terminal's red palette color. Rows show only the agent
@@ -74,6 +89,10 @@ Closing the dialog marks the displayed records as read. Rows you have not scroll
 to and new updates not yet displayed remain unread. Completed calls update the
 same record; a completion you have not seen becomes unread. History and read state
 are saved locally and remain available after restarting.
+
+Choose **Read all** in the **Unread** dialog footer to mark all existing activity
+on the current canvas as read, including other pages. Later calls and completion
+updates can become unread again.
 
 Agents opt in with `--agent <stable-id>` on Canvas CLI calls, optionally adding
 `--agent-name <display-name>`. For example, each agent can set its identity once:

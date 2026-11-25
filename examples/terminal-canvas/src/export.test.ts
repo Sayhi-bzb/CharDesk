@@ -75,7 +75,6 @@ test('native export dialog delivers all formats without changing document identi
       expect(workspace.requireActive().path).toBe(path);
       expect(model.canUndo).toBe(false);
     }
-    // A failed publication remains editable; reopening never silently replaces existing data.
     setup.mockInput.pressKey('F7', { shift: true });
     setup.mockInput.pressEnter();
     surface.panel!.input = join(root, 'export-0');

@@ -16,7 +16,6 @@ const sections: readonly { id: SettingsSection; label: string }[] = [
   { id: 'updates', label: 'Updates' },
 ];
 
-/** One modal settings carrier over the shared panel shell and preference definitions. */
 export class TerminalSettingsDialog {
   #panel: TerminalPanel | null = null;
   #section = 0;

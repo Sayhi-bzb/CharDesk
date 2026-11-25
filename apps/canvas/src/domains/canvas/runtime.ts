@@ -39,9 +39,6 @@ import {
 
 const mutableCanvasStores = new WeakMap<object, CanvasStore>();
 
-/** Persistence is a durability boundary, not a prerequisite for returning a
- * projection mutation. Keep callers bounded when a provider never resolves
- * its sync promise (for example, a stale IndexedDB/Yjs coordination lease). */
 export const CANVAS_PERSISTENCE_FLUSH_TIMEOUT_MS = 5_000;
 
 export class CanvasPersistenceTimeoutError extends Error {
@@ -134,8 +131,6 @@ export class CanvasRuntime {
     const storeInstance = createEditorStore({
       documents: this.documents,
       reportIntegrityIssues: options.reportIntegrityIssues ?? (() => undefined),
-      // Browser content persistence is coordinated against the authoritative
-      // Yjs documents. Zustand remains an in-memory projection.
       persistence: false,
       initialSessions,
       viewport: this.viewport,
@@ -233,11 +228,6 @@ export class CanvasRuntime {
   subscribeProjectionCache = (listener: () => void) =>
     this.documents.subscribeProjectionCache(listener);
 
-  /**
-   * Search the materialized projection for a session. UI and MCP callers use
-   * this boundary so the session loading and surface-search semantics cannot
-   * drift apart.
-   */
   search = async (
     sessionId: string,
     query: string,
@@ -325,7 +315,6 @@ export class CanvasRuntime {
   };
 }
 
-/** Internal test seam; intentionally absent from the Canvas public barrel. */
 export const getMutableCanvasStoreForTesting = (runtime: CanvasRuntime) => {
   const store = mutableCanvasStores.get(runtime);
   if (!store) throw new Error("Canvas runtime Store is unavailable");

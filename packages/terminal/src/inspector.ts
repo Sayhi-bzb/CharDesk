@@ -32,7 +32,6 @@ type ColorInput = {
 };
 const clipboardActions = new Set(['copy', 'cut', 'paste', 'select-all']);
 
-/** Nonmodal presentation and explicit input ownership; document rules stay in shared commands. */
 export class TerminalInspector {
   #open = true;
   get #focused() { return this.surface.input.focusOwner === this; }

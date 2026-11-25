@@ -10,7 +10,6 @@ type CanvasEngineManager = {
   dispose: () => void;
 };
 
-/** Internal lifetime boundary for the imperative canvas engine. */
 export class CanvasEngineRuntime {
   readonly frameScheduler: CanvasFrameScheduler;
   readonly renderActivity: CanvasRenderActivity;
@@ -38,10 +37,6 @@ export class CanvasEngineRuntime {
     );
   }
 
-  /**
-   * Keeps the runtime alive while a React owner is mounted. Disposal is deferred
-   * one microtask so StrictMode's simulated unmount/remount can reacquire it.
-   */
   acquire(): () => void {
     if (this.disposed) return () => undefined;
     this.ownerCount += 1;

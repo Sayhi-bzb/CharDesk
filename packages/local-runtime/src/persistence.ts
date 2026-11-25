@@ -139,7 +139,6 @@ export class WorkspacePersistence {
           await handle.writeFile(persistence.#owner);
           await handle.sync();
         } catch (error) {
-          // This descriptor was created exclusively by this attempt.
           await unlink(lock).catch(() => {});
           throw error;
         } finally {
@@ -244,9 +243,7 @@ export class WorkspacePersistence {
           try {
             parseCanvasDocument(current);
             native = true;
-          } catch {
-            /* Keep non-native external data untouched. */
-          }
+          } catch { /* empty */ }
           if (native) {
             const original = new CanvasFile(saved.path, saved.title, current);
             install(original, current, [], false);
@@ -297,7 +294,6 @@ export class WorkspacePersistence {
     };
     const changed = () => {
       if (!this.#active) return;
-      // Throttle checkpoints so continuous typing cannot postpone recovery indefinitely.
       if (!this.#timer)
         this.#timer = setTimeout(() => {
           this.#timer = null;
@@ -418,8 +414,6 @@ export class WorkspacePersistence {
     this.#closed = (async () => {
       try {
         await this.#workspace?.settleSaves();
-        // Save before releasing the workspace, even if the idle timer has not fired.
-        // Keep recovery current when a document cannot be written.
         try {
           await this.#workspace?.saveAll();
         } finally {

@@ -40,9 +40,7 @@ const readLastAttempt = (storage: RecoveryStorage) => {
 const writeLastAttempt = (storage: RecoveryStorage, attemptedAt: number) => {
   try {
     storage.setItem(MODULE_LOAD_RECOVERY_KEY, String(attemptedAt));
-  } catch {
-    // Storage can be unavailable in private or embedded browser contexts.
-  }
+  } catch { /* empty */ }
 };
 
 export const requireLoadedModule = <Module,>(module: Module | undefined): Module => {

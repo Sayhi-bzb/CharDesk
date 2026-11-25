@@ -314,7 +314,6 @@ test("Toast config styles future notices in Rich and Text presentations", async 
     await page.getByRole("option", { name: option, exact: true })
       .evaluate((element: HTMLElement) => element.click());
     await expect.poll(async () => {
-      // Select confirmation advances only after each painted blink phase.
       await page.clock.runFor(100);
       return trigger.getAttribute("aria-expanded");
     }).toBe("false");

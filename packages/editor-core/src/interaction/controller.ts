@@ -231,7 +231,6 @@ export const createCanvasInteractionPort = ({
       return capture.getState();
     },
     complete: (state, endGrid) => {
-      // Release can carry a final coordinate with no preceding move event.
       if (endGrid && (state.type === 'drawing' || state.type === 'shapePreview'))
         state = port.update(state, {
           type: 'canvas-drag-update',

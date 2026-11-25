@@ -58,7 +58,6 @@ function colorState(values: readonly (string | undefined)[]): SelectedColor {
   return values[0] ? { kind: 'color', value: values[0] } : { kind: 'none' };
 }
 
-/** Existing anchors determine mixed states; follower slots never count as separate cells. */
 export function readSelectionStyle(reader: GridCellSource, ranges: readonly GridRange[]) {
   const cells: GridCell[] = [];
   let limited = false;
@@ -107,7 +106,6 @@ export function readSelectionStyleChange(input: unknown): SelectionStyleChange {
   throw new TypeError('Expected selection text attributes or a foreground/background color.');
 }
 
-/** One patch for all ranges; creating/removing blank cells follows the Web document contract. */
 export function planSelectionStyle(
   reader: GridCellSource,
   ranges: readonly GridRange[],

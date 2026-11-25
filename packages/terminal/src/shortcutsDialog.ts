@@ -2,7 +2,6 @@ import type { KeyEvent } from '@opentui/core';
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
 import { shortcutSections } from './shortcutGuide.ts';
 
-/** Read-only guide over the same panel shell as Settings and Sessions. */
 export class TerminalShortcutsDialog {
   #panel: TerminalPanel | null = null;
   #section = 0;

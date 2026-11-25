@@ -17,7 +17,6 @@ export type CanvasTextExportFormat = 'txt' | 'ansi' | 'chardesk';
 export type CanvasExportScope = 'canvas' | 'selection';
 export type CanvasExportSnapshot = ReturnType<typeof captureCanvasExport>;
 
-/** Capture once, before platform IO. Selection holes exclude their contents. */
 export function captureCanvasExport(
   source: GridCellSource,
   selections?: readonly SelectionArea[],
@@ -48,7 +47,6 @@ export function captureCanvasExport(
   };
 }
 
-/** One budget for browser Canvas and native Canvas raster delivery. */
 export function resolveExportRasterLayout(
   cols: number,
   rows: number,
@@ -126,7 +124,6 @@ export function prepareCanvasTextExport(input: {
       { includeColor }
     );
   }
-  // Text formats expand the envelope; reject sparse distant islands before allocation.
   validateSelectionWork(
     format === 'txt' && snapshot.scope === 'canvas'
       ? [

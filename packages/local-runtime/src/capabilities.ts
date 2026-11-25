@@ -27,7 +27,7 @@ import {
 import { searchCanvasSurface } from '@chardesk/editor-core/search';
 import type { LocalCanvasHost, LocalCodeDraft } from './host.ts';
 import type { LocalSessions } from './sessions.ts';
-import type { CanvasSurfaceReader } from '@chardesk/cell-plane';
+import type { CanvasSurfaceReader, CellPlaneOperation } from '@chardesk/cell-plane';
 import { WelcomeAppearance } from '@chardesk/canvas-templates/welcome-appearance';
 import { normalizeContentRgb } from '@chardesk/rendering/theme';
 import { contentFailure, requestFingerprint, type LocalRequestContext } from './request.ts';
@@ -202,6 +202,24 @@ function buildLocalCapabilities(
                     return renderLocalReadImage(plan);
                   },
                 });
+                const canvasId = sessions.forFile(file)?.id;
+                if (
+                  !draft &&
+                  context?.agent &&
+                  canvasId &&
+                  result.viewport &&
+                  !result.overviewOnly
+                ) {
+                  const [x, y, width, height] = result.viewport;
+                  sessions.agents.publishActivity({
+                    kind: 'read',
+                    canvasId,
+                    ...address,
+                    version: snapshot.version,
+                    agent: { ...context.agent },
+                    bounds: { x, y, width, height },
+                  });
+                }
                 return {
                   ...result,
                   version: snapshot.version,
@@ -336,13 +354,51 @@ function buildLocalCapabilities(
             file.writeGuard?.();
             const operationId = persistentHistory && !batch ? `op-${randomUUID()}` : undefined;
             let receipt;
-            if (batch) {
-              model.documents.assertContentVersion(address.documentId, baseVersion);
-              model.documents.applyCellPlanePatchAt(address, prepared.patch);
-            } else
-              receipt = model.documents.commitContentPatchAt(address, prepared.patch, {
-                baseVersion,
-                operationId,
+            let transition: { before: CellPlaneOperation; after: CellPlaneOperation } | undefined;
+            const observe =
+              !draft && !batch && context?.agent && sessions.agents.hasActivityListeners;
+            const stop = observe
+              ? model.documents.subscribeMutations((event, inverse) => {
+                  if (
+                    (event.kind === 'cell-plane' || event.kind === 'anchors') &&
+                    event.operation &&
+                    inverse &&
+                    event.documentId === address.documentId &&
+                    event.pageId === address.pageId
+                  )
+                    transition = { before: inverse, after: event.operation };
+                })
+              : () => {};
+            try {
+              if (batch) {
+                model.documents.assertContentVersion(address.documentId, baseVersion);
+                model.documents.applyCellPlanePatchAt(address, prepared.patch);
+              } else
+                receipt = model.documents.commitContentPatchAt(address, prepared.patch, {
+                  baseVersion,
+                  operationId,
+                });
+            } finally {
+              stop();
+            }
+            const canvasId = sessions.forFile(file)?.id;
+            if (transition && receipt && context?.agent && canvasId)
+              sessions.agents.publishActivity({
+                kind:
+                  contract.name === 'canvas_render'
+                    ? 'render'
+                    : contract.name === 'canvas_erase'
+                      ? 'erase'
+                      : contract.name === 'canvas_fill'
+                        ? 'fill'
+                        : 'write',
+                canvasId,
+                ...address,
+                version: receipt.version,
+                agent: { ...context.agent },
+                bounds: transition.before.bounds,
+                ...transition,
+                writtenCells: prepared.writtenCells,
               });
             const mutation = {
               ...prepared,

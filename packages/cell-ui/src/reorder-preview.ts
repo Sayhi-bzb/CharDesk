@@ -10,7 +10,6 @@ export type ReorderDrag = Readonly<{
   point: CellPoint;
 }>;
 
-/** A presentation-only projection; the committed frame remains the copy and hit source. */
 export const paintReorderPreview = (
   frame: FrameSnapshot,
   drag: ReorderDrag,
@@ -33,9 +32,6 @@ export const paintReorderPreview = (
   const projected = [...rows];
   projected.splice(drop.toIndex, 0, projected.splice(fromIndex, 1)[0]!);
 
-  // Start from the currently presented projection. The base buffer can omit
-  // overlay/scroll composition when the surface is hosted inside a document
-  // scene, which made the preview appear as an empty canvas in that mode.
   const buffer = frame.buffer.clone();
   const clip = {
     x: Math.max(0, listBounds.x),

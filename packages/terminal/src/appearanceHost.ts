@@ -1,7 +1,6 @@
 import type { CliRenderer, TerminalColors } from '@opentui/core';
 import type { TerminalAppearanceRuntime } from './appearance.ts';
 
-/** OpenTUI owns terminal protocols and its palette cache; this adapter owns attachment. */
 export function attachTerminalAppearance(
   renderer: CliRenderer,
   appearance: TerminalAppearanceRuntime

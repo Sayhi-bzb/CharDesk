@@ -44,7 +44,6 @@ test('first launch consumes the shared Web Welcome; new canvases and explicit pa
     }
     expect(first.workspace.model.canUndo).toBe(false);
     expect(first.workspace.dirty).toBe(false);
-    // A subsequent New is an empty document, rather than a second Welcome.
     await first.sessions.create();
     expect(first.workspace.model.plane.materialize().size).toBe(0);
   } finally {

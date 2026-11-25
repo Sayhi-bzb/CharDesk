@@ -72,7 +72,6 @@ function createStore(profile: CharDeskFontProfile, metrics: CharDeskCellMetrics)
       listeners.add(listener);
       if (listeners.size === 1) {
         document.fonts?.addEventListener("loadingdone", refresh);
-        // Cached stores may have missed font events while unsubscribed.
         refresh();
       }
       return () => {

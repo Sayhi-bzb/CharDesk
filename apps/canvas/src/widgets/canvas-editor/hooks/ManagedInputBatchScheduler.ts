@@ -27,7 +27,6 @@ type ManagedInputBatchSchedulerPort = {
   commit: (value: string, sample: ManagedInputBatchSample) => void;
 };
 
-/** Batches managed text without changing ordering-boundary semantics. */
 export class ManagedInputBatchScheduler {
   readonly #port: ManagedInputBatchSchedulerPort;
   readonly #cadenceMs: number;

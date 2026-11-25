@@ -3,11 +3,6 @@ import type { GridPoint } from "./model.js";
 
 const EPSILON = 1e-6;
 
-/**
- * Project a continuous orthogonal route onto cells without collapsing turns.
- * ELK commonly returns half-cell centers for odd-sized nodes; flooring chooses
- * the upper/left center cell consistently across directions.
- */
 export const quantizeRoute = (points: readonly ElkPoint[]): GridPoint[] => {
   const quantized: GridPoint[] = [];
   for (const point of points) {

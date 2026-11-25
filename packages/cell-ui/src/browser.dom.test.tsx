@@ -58,8 +58,6 @@ import type { CellRangeCommand } from "./range.js";
 import type { SemanticAction } from "./types.js";
 import type { CharDeskFontProfile } from "@chardesk/rendering/canvas";
 
-// Test pointer coordinates are content-relative; the browser canvas includes
-// one physical guard Cell before the logical viewport.
 const withSurfaceGuard = (options?: Record<string, unknown>) => ({
   ...options,
   ...(typeof options?.clientX === "number" ? { clientX: options.clientX + 10 } : {}),

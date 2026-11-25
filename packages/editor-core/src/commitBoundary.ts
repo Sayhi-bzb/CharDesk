@@ -1,4 +1,3 @@
-/** One final publication boundary for nested synchronous commands in every Host. */
 export class SynchronousCommitBoundary {
   #depth = 0;
   readonly #afterCommit = new Set<() => void>();

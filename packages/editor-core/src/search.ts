@@ -53,7 +53,6 @@ type Run = Readonly<{
   offsets: ReadonlyMap<number, number>;
 }>;
 
-/** Literal and regex matching share Cell boundaries and spatial template verification. */
 export const searchCanvasSurface = (
   surface: CanvasSurfaceReader,
   query: string,

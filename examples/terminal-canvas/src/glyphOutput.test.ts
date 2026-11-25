@@ -66,8 +66,6 @@ for (const tool of ['hand', 'edit'] as const) {
         });
         model.documents.clearHistory();
         model.selection = { anchor: { x: 10, y: 12 }, focus: { x: 13, y: 13 } };
-        // Replay the actual native diff into a VT grid. Frame captures alone miss
-        // terminal cursor drift when a ZWJ sequence occupies more than two cells.
         const present = async () => {
           await setup.renderOnce();
           await setup.renderer.nativeScene.driver.idle();

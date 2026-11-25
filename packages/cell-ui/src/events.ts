@@ -74,7 +74,6 @@ export class EventManager {
     return this.#captures.get(pointerId)?.targetId ?? null;
   }
 
-  /** Transfer a won generic drag from its tap child to its mounted owner. */
   captureDrag(frame: FrameSnapshot, pointerId: number, targetId: WidgetId, point: CellPoint): boolean {
     if (!isMountedDragSource(frame, targetId) || !frame.scene.entries.get(targetId)?.paintVisible) return false;
     this.#captures.set(pointerId, { targetId, path: getEventPath(frame.scene, targetId), point, retainOffscreen: true });

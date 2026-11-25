@@ -16,7 +16,6 @@ const point = (value: unknown): value is CellPoint =>
   object(value) && Number.isSafeInteger(value.x) && Number.isSafeInteger(value.y);
 const range = (value: unknown) => object(value) && point(value.start) && point(value.end);
 
-/** Recovery is an input boundary, not a cast from persisted JSON to live editor state. */
 export function readEditorView(value: unknown): EditorView {
   let validInteraction = false;
   if (object(value) && object(value.interaction)) {

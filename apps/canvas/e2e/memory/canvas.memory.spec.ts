@@ -452,9 +452,6 @@ test("measures canvas memory lifecycle workloads", async ({ browser }) => {
         await handle.evaluate((api) => api.ready());
         const cdp = await context.newCDPSession(page);
         await cdp.send("Runtime.enable");
-        // Put the baseline on the same post-create/delete lifecycle state as the
-        // released checkpoint. This excludes lazy session/UI initialization
-        // from retention while leaving the measured payload cold.
         const warmupId = await handle.evaluate(
           (api, value) => api.loadSession(value),
           snapshot([])

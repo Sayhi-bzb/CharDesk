@@ -46,8 +46,6 @@ export const resolveComponentPlaygroundLayout = (
         usableColumns - 2,
       );
   const propsColumns = stacked ? width : usableColumns - previewColumns;
-  // Reserve one column for a possible vertical rail so tall controls do not
-  // create horizontal overflow solely because the rail appeared.
   const propsContentColumns = Math.max(1, propsColumns - 1);
   const controlsInset = Math.max(
     0,

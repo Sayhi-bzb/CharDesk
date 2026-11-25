@@ -25,13 +25,11 @@ export type CharDeskFontCapability =
   | "symbol"
   | "emoji";
 
-/** inherit follows Cell bold; regular always requests the regular face/weight. */
 export type CharDeskFontWeightPolicy = "inherit" | "regular";
 
 export type CharDeskFontBoldStrategy = "auto" | "native" | "overdraw" | "none";
 export type CharDeskResolvedFontBoldStrategy = Exclude<CharDeskFontBoldStrategy, "auto">;
 
-/** One CSS pixel at the default 15px Cell font size. */
 export const DEFAULT_CHARDESK_BOLD_OVERDRAW_EM = 1 / 15;
 
 export type CharDeskFontFaceSpec = Readonly<{
@@ -41,11 +39,8 @@ export type CharDeskFontFaceSpec = Readonly<{
   }>;
   fontSizeScale?: number;
   baselineShiftEm?: number;
-  /** auto uses a declared bold family, otherwise renderer overdraw. */
   boldStrategy?: CharDeskFontBoldStrategy;
-  /** Optional overdraw offset in em; defaults to one CSS pixel at 15px. */
   boldOverdrawEm?: number;
-  /** Optional grid calibration, in em of this face's effective font size. */
   cellMetrics?: Readonly<{ width?: number; height?: number; baseline?: number }>;
   /** @deprecated Use boldStrategy. Accepted only as profile input. */
   weightPolicy?: CharDeskFontWeightPolicy;
@@ -71,7 +66,6 @@ export type CharDeskFontProfile = Readonly<{
   capabilities: Readonly<Record<CharDeskFontCapability, CharDeskResolvedFontFaceSpec>>;
   sources: readonly CharDeskFontSource[];
   resolveCapability: (grapheme: string) => CharDeskFontCapability;
-  /** Compatibility stacks for the original text/emoji renderer routes. */
   families: Readonly<{
     text: string;
     emoji: string;
@@ -289,7 +283,6 @@ export const CHARDESK_SYSTEM_FONT_PROFILE = createCharDeskFontProfile({
   display: systemFace,
 });
 
-/** Preserve display routing while rendering structural cells with the Core face. */
 export function withCharDeskCoreCellGlyphs(profile: CharDeskFontProfile): CharDeskFontProfile {
   return {
     ...profile,

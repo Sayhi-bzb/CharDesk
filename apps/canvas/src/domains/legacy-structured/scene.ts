@@ -1,6 +1,5 @@
 import type { GridCell, NodeBounds, Point } from "@/shared/types";
 
-// Read-only renderer retained to flatten retired Structured Canvas scenes.
 import type { StructuredNode } from "./types";
 import { normalizeCellStyle } from "@/shared/utils/ansi";
 import { mergeStructuredTextStyle } from "./text-ranges";
@@ -131,10 +130,6 @@ const calculateStructuredNodeBounds = (node: StructuredNode): NodeBounds => {
   };
 };
 
-/**
- * Structured nodes are immutable editor values. Cache their derived geometry so
- * an edit can retain geometry for every structurally shared node.
- */
 const getStructuredNodeBounds = (node: StructuredNode): NodeBounds => {
   const cached = structuredNodeBoundsCache.get(node);
   if (cached) return { ...cached };

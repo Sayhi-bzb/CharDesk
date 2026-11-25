@@ -10,7 +10,6 @@ import type { CanvasDocumentDraft, CanvasPageDraft } from './canvasDocumentModel
 
 type PageText = Omit<CanvasPageDraft, 'grid' | 'kind'> & {
   origin: { x: number; y: number };
-  /** Only inactive pages carry text here; active text belongs to envelope.body. */
   text?: string;
   fragments?: { origin: { x: number; y: number }; text: string }[];
 };
@@ -40,7 +39,6 @@ function encodePage(
         text: exportToCharDesk(source, options),
       },
     ];
-  // Sparse islands stay sparse on disk; distance must not determine allocation.
   const sorted = grid
     .map(([key, cell]) => {
       const [x, y] = key.split(',').map(Number);
@@ -94,7 +92,6 @@ export function serializeCanvasDocument(
     activePageId: document.activePageId,
     pages,
   };
-  // Validate our own output too; incomplete drafts must never overwrite a valid file.
   const source = serializeCharDeskDocumentEnvelope({ mode: 'freeform', title, body, canvas });
   parseCanvasDocument(source);
   return source;

@@ -179,7 +179,6 @@ describe("Canvas reading tool", () => {
       return styleIndex === undefined ? cell : {...position,...visible.styles[styleIndex as number]};
     });
     expect(decoded).toEqual(result.cells);
-    // The local broker's WebSocket message envelope is 1 MiB.
     expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThan(1024*1024);
   });
 

@@ -73,7 +73,6 @@ export type CharDeskCellRangeGeometry = Readonly<{
 export type CharDeskCellRangePaintStyle = Readonly<{
   surface: string;
   border: string;
-  /** `contrast` adapts the surface against already-painted pixels without repainting Cells. */
   surfaceEffect?: "tint" | "contrast";
 }>;
 
@@ -112,7 +111,6 @@ export type CharDeskCellVisual = CharDeskCellVisualInput & {
 
 export type CharDeskCellFrameCell = Readonly<{
   visual: CharDeskCellVisual;
-  /** Physical background span; glyph width remains visual.width. */
   backgroundWidth?: 1 | 2;
   drawBackground?: boolean;
   drawText?: boolean;

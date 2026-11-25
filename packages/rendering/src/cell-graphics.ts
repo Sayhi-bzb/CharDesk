@@ -18,7 +18,6 @@ type CharDeskCellGraphicPresentation = Readonly<{
   backgroundColor?: string;
 }>;
 
-/** Only exact registered single-grapheme definitions bypass font shaping. */
 export const resolveCharDeskCanvasGlyphSource = (text: string): "font" | "cell-graphics" =>
   cellGraphicDefinitions[text] === undefined ? "font" : "cell-graphics";
 
@@ -68,9 +67,6 @@ function drawOctants(ctx: Context, part: CustomGlyphDefinitionPart & { type: 0 }
     };
     const aligned = alignCanvasRect(source, transform);
     let { x, y, width, height } = aligned;
-    // A Cell narrower than eight device pixels cannot give every octant a unique
-    // partition. Keep a non-empty Unicode block visible by assigning its collapsed
-    // interval the nearest in-cell pixel; overlapping parts are union-filled below.
     if (axis && width === 0 && cellRight > cellLeft) {
       const center = (source.x + source.width / 2) * transform.a + (transform.e ?? 0);
       const start = Math.max(cellLeft, Math.min(cellRight - 1, Math.floor(center)));

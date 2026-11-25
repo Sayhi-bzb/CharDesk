@@ -456,9 +456,7 @@ export const openManagedSession = async ({
           lastActivityAt: ready.lastActivityAt,
           idleExpiresAt: ready.idleExpiresAt,
         };
-    } catch {
-      // The PNG fallback below keeps the user-visible result available.
-    }
+    } catch { /* empty */ }
     return {
       ...active,
       status: 'fallback',
@@ -481,9 +479,7 @@ export const openManagedSession = async ({
         lastActivityAt: runtime.lastActivityAt,
         idleExpiresAt: runtime.idleExpiresAt,
       };
-  } catch {
-    // The PNG fallback below keeps the user-visible result available.
-  }
+  } catch { /* empty */ }
   return {
     ...active,
     status: 'fallback',

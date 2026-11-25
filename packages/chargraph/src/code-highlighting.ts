@@ -2,7 +2,6 @@ import type { BundledLanguage, ThemeRegistrationAny, BundledTheme, SpecialTheme 
 import { createCharGraphFragment } from "./fragments.js";
 import type { CharGraphFragment } from "./model.js";
 
-/** Syntax colors annotate source characters without changing their positions. */
 export async function highlightCode(
   source: string,
   language: string,

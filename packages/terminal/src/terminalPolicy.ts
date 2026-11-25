@@ -6,12 +6,10 @@ export type TerminalInputPolicy = {
   shiftClick: 'requested' | 'reserved' | 'unknown';
 };
 
-/** Missing mouse modifier bits are a direct-Warp workaround, not a generic Kitty capability. */
 export function mouseModifierSource(policy: TerminalInputPolicy): 'mouse' | 'keyboard-fallback' {
   return policy.terminal === 'warp' && !policy.multiplexed ? 'keyboard-fallback' : 'mouse';
 }
 
-/** Identity selects documented policy; Kitty support alone does not prove key forwarding. */
 export function resolveTerminalPolicy(
   environment: NodeJS.ProcessEnv = {},
   capabilities: TerminalCapabilities | null = null
@@ -64,7 +62,6 @@ export function terminalRendererEnvironment(
   return overrides;
 }
 
-/** Uses the renderer's ordered output owner, never intercepted process.stdout writes. */
 export function attachTerminalPolicy(
   renderer: CliRenderer,
   write: (bytes: Uint8Array) => boolean,
@@ -97,7 +94,6 @@ export function attachTerminalPolicy(
     if (requested) send(false);
   };
   renderer.on('capabilities', refresh);
-  // OpenTUI emits destroy before closing the NativeSession output queue.
   renderer.on('destroy', dispose);
   refresh();
   return dispose;

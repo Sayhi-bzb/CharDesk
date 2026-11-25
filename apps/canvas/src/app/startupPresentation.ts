@@ -46,13 +46,13 @@ export function readStartupLanguage(): StartupLanguage {
     const stored = normalizeLanguage(localStorage.getItem("chardesk-ui-language")
       ?? localStorage.getItem("ascii-canvas-ui-language"));
     if (stored) return stored;
-  } catch { /* Browser storage can be unavailable before the app starts. */ }
+  } catch { /* empty */ }
   try {
     for (const preferred of navigator.languages.length ? navigator.languages : [navigator.language]) {
       const language = normalizeLanguage(preferred);
       if (language) return language;
     }
-  } catch { /* English is the static document fallback. */ }
+  } catch { /* empty */ }
   return "en";
 }
 
@@ -61,6 +61,6 @@ export function readStartupTheme(): "light" | "dark" {
     const preference = localStorage.getItem("chardesk-host-theme");
     if (preference === "dark") return "dark";
     if (preference === "system" && matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
-  } catch { /* Preserve the default light theme. */ }
+  } catch { /* empty */ }
   return "light";
 }

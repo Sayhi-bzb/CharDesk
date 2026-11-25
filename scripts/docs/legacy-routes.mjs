@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-/** Agent resource URLs deliberately have no redirect; only human HTML pages move. */
 export function legacyDocRoutes() {
   return [...globSync('**/*.mdx', { cwd: path.join(root, 'apps/docs/content/docs') })].sort().map(file => {
     const slug = file.replace(/\.mdx$/, '').replace(/(^|\/)index$/, '').replace(/\/$/, '');

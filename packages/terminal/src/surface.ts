@@ -36,6 +36,7 @@ import { TerminalLinkText, type LinkedGlyph } from './linkText.ts';
 import type { TerminalContextMenu } from './contextMenu.ts';
 import { TerminalSettingsStore } from './settings.ts';
 import { TerminalAppearanceRuntime } from './appearance.ts';
+import type { TerminalActivityEffects } from './activityEffects.ts';
 import { attachTerminalAppearance } from './appearanceHost.ts';
 import { canEdgeScroll } from '@chardesk/editor-core/interaction/edgeScroll';
 import { TerminalEdgeScroll } from './edgeScroll.ts';
@@ -67,7 +68,6 @@ type ChromeAction = keyof typeof CHROME_LABELS;
 export type TerminalPanel = {
   notice?: TerminalNotice;
   dialog?: boolean;
-  /** Modal child; render its parent underneath and route input only to this panel. */
   underlay?: TerminalPanel;
   tabs?: string[];
   trailingTab?: number;
@@ -75,11 +75,11 @@ export type TerminalPanel = {
   onTab?: (index: number) => void;
   onClose?: () => void;
   status?: string;
+  footerStatus?: string;
   title: string;
   input?: string;
   hint: string;
   items: string[];
-  /** Read-only document viewport; independent of list selection. */
   scrollArea?: {
     lines: readonly string[];
     scrollTop: number;
@@ -88,19 +88,41 @@ export type TerminalPanel = {
   itemHints?: readonly string[];
   emptyMessage?: string;
   actions?: readonly { id: string; label: string; onPick: () => void }[];
-  /** Keep actions inside the dialog, outside its scrolling body. */
   actionPlacement?: 'dialog-footer';
   selected: number;
   activeItem?: number;
   error?: string;
   onPick?: (index: number) => void;
-  /** Indices actually painted in the topmost panel; loading a list does not imply viewing it. */
   onItemsRendered?: (start: number, end: number) => void;
   readonly busy?: boolean;
   onInput?: (value: string) => void;
 };
 
 export class CanvasSurface extends Renderable {
+  activityEffects?: TerminalActivityEffects;
+  get activityBadgeControls() {
+    if (
+      !this.hasDocument ||
+      this.panel ||
+      this.help ||
+      this.closing ||
+      this.placement ||
+      this.contextMenu?.isOpen
+    )
+      return [];
+    const minimap = this.minimapFrame;
+    return (
+      this.activityEffects?.badges(this.model.viewport, (rect) => {
+        const screen = { ...rect, y: rect.y + CANVAS_TOP };
+        return (
+          Boolean(minimap && intersectCellRects(screen, minimap.panel)) ||
+          Array.from({ length: rect.width }, (_, x) => ({ x: rect.x + x, y: screen.y })).some(
+            (point) => this.inspector?.contains(point)
+          )
+        );
+      }) ?? []
+    ).map((badge) => ({ ...badge, y: badge.y + CANVAS_TOP }));
+  }
   readonly input = new TerminalInputContext(() => this.requestRender());
   readonly t: TerminalSettingsStore['i18n']['t'];
   readonly messages: ReturnType<typeof localizedMessages>;
@@ -513,8 +535,6 @@ export class CanvasSurface extends Renderable {
         const inside = cellRectContainsPoint(view, { x, y });
         const inks = inside ? highlighted : colors;
         const backing = inside ? this.colors.minimapViewport : this.colors.chrome;
-        // Keep an unresolved native foreground in the FG channel; it cannot be
-        // converted to an RGB background without an actual terminal palette.
         const lowerInk = !top || (bottom && top !== bottom && native(bottom));
         const ink = lowerInk ? bottom : top;
         const paper = lowerInk ? top : bottom;
@@ -611,6 +631,14 @@ export class CanvasSurface extends Renderable {
     }
     model.resize(this.canvasBounds.width, this.canvasBounds.height);
     const { viewport } = model;
+    for (const { bounds, color } of this.activityEffects?.regions(viewport) ?? [])
+      buffer.fillRect(
+        bounds.x - viewport.x,
+        CANVAS_TOP + bounds.y - viewport.y,
+        bounds.width,
+        bounds.height,
+        color
+      );
     const coverage = model.selectionPresentationFor({
       ...viewport,
       x: viewport.x - 1,
@@ -643,29 +671,37 @@ export class CanvasSurface extends Renderable {
       cellRectContainsPoint(viewport, model.cursor);
     this.widthFallbacks = 0;
     const frame = model.frame();
+    const presentation = this.activityEffects?.presentation;
     const projectCell = this.welcomeAppearance.cellProjector(model.plane);
     const linkedGlyphs: LinkedGlyph[] = [];
     this.#links.beginFrame();
-    // Include a leading halo so a wide glyph's clipped tail retains its background.
     const paintCell = (
       x: number,
       y: number,
-      authoredCell: import('@chardesk/cell-plane/types').GridCell
+      authoredCell: import('@chardesk/cell-plane/types').GridCell,
+      projected = false
     ) => {
       const cell = projectCell(authoredCell);
       const width = getGraphemeCellWidth(cell.char);
+      if (!projected && presentation?.group(x, y, width)) return;
       const left = x - viewport.x,
         top = CANVAS_TOP + y - viewport.y;
-      const fg = isDefaultArtifactForeground(cell)
+      const sourceFg = isDefaultArtifactForeground(cell)
         ? this.colors.foreground
         : RGBA.fromHex(cell.color);
       const sourceBg = cell.bgColor ? RGBA.fromHex(cell.bgColor) : this.colors.background;
       const highlighted =
         coverage.contains({ x, y }) ||
         this.searchHighlights.some((range) => cellRectContainsPoint(range, { x, y }));
-      // Selection owns one background across text, spaces and wide followers;
-      // inverse would swap that background with each character's own color.
-      const bg = highlighted ? this.colors.selection : sourceBg;
+      const inverted = !highlighted && cell.attrs?.inverse;
+      const fg = inverted
+        ? (this.activityEffects?.background(x, y, width, sourceFg) ?? sourceFg)
+        : sourceFg;
+      const bg = highlighted
+        ? this.colors.selection
+        : inverted
+          ? sourceBg
+          : (this.activityEffects?.background(x, y, width, sourceBg) ?? sourceBg);
       const attributes = createTextAttributes({
         ...cell.attrs,
         inverse: highlighted ? false : cell.attrs?.inverse,
@@ -705,7 +741,24 @@ export class CanvasSurface extends Renderable {
       else buffer.drawText(text, left, top, fg, bg, attributes);
     };
     frame.source.visit({ ...viewport, x: viewport.x - 1, width: viewport.width + 1 }, paintCell);
+    presentation?.visit((x, y, cell) => paintCell(x, y, cell, true));
     this.#links.draw(buffer, linkedGlyphs, 'document');
+    const writeCursor = this.activityEffects?.writeCursor;
+    if (
+      writeCursor &&
+      cellRectContainsPoint(viewport, writeCursor) &&
+      !this.panel &&
+      !this.help &&
+      !ranges.some((range) => intersectCellRects(range, writeCursor)) &&
+      !(cursorVisible && model.cursor.x === writeCursor.x && model.cursor.y === writeCursor.y)
+    )
+      buffer.fillRect(
+        writeCursor.x - viewport.x,
+        CANVAS_TOP + writeCursor.y - viewport.y,
+        Math.min(writeCursor.width, viewport.x + viewport.width - writeCursor.x),
+        1,
+        writeCursor.color
+      );
     if (this.placement) {
       linkedGlyphs.length = 0;
       const placement = this.placement;
@@ -716,7 +769,7 @@ export class CanvasSurface extends Renderable {
           width: viewport.width + 1,
           height: viewport.height,
         },
-        (x, y, cell) => paintCell(x + placement.at.x, y + placement.at.y, cell)
+        (x, y, cell) => paintCell(x + placement.at.x, y + placement.at.y, cell, true)
       );
       this.#links.draw(buffer, linkedGlyphs, 'placement');
     }
@@ -726,6 +779,17 @@ export class CanvasSurface extends Renderable {
     this.inspector?.render(buffer, (text, x, y, fg, bg, width, attributes) =>
       this.#line(buffer, text, x, y, fg, bg, width, attributes)
     );
+    for (const badge of this.activityBadgeControls)
+      this.#line(
+        buffer,
+        badge.label,
+        badge.x,
+        badge.y,
+        badge.color,
+        this.colors.chrome,
+        badge.width,
+        createTextAttributes({ bold: true })
+      );
     const footer = this.footerBounds.y;
     buffer.fillRect(0, footer, this.width, FOOTER_ROWS, this.colors.chrome);
     buffer.fillRect(0, 0, this.width, CANVAS_TOP, this.colors.chrome);
@@ -819,7 +883,6 @@ export class CanvasSurface extends Renderable {
         );
     }
     if (this.panel) this.#renderPanel(buffer, this.panel);
-    // OpenTUI's terminal cursor API uses 1-based coordinates.
     this.contextMenu?.render(buffer, (text, x, y, fg, bg, width) =>
       this.#line(buffer, text, x, y, fg, bg, width)
     );
@@ -1121,8 +1184,9 @@ export class CanvasSurface extends Renderable {
           this.colors.background,
           layout.width - 4
         );
-      if (panel.dialog && panel.actionPlacement === 'dialog-footer')
-        for (const action of this.#panelFooterControls(panel))
+      if (panel.dialog && panel.actionPlacement === 'dialog-footer') {
+        const actions = this.#panelFooterControls(panel);
+        for (const action of actions)
           this.#line(
             buffer,
             action.label,
@@ -1133,6 +1197,23 @@ export class CanvasSurface extends Renderable {
             action.width,
             createTextAttributes({ bold: true })
           );
+        if (panel.footerStatus) {
+          const left = layout.x + 2;
+          const right = Math.min(
+            layout.x + layout.width - 2,
+            ...actions.map((action) => action.x - 1)
+          );
+          this.#line(
+            buffer,
+            this.#fit(panel.footerStatus, right - left),
+            left,
+            layout.y + layout.height - 2,
+            this.colors.muted,
+            this.colors.background,
+            Math.max(0, right - left)
+          );
+        }
+      }
     }
   }
 
@@ -1197,7 +1278,6 @@ export class CanvasSurface extends Renderable {
       x += width + 1;
       return x <= (rightLabel ? rightX : layout.x + layout.width) ? [control] : [];
     });
-    // A narrow dialog still exposes the selected activity tab alongside the Agent view.
     const selected = panel?.selectedTab;
     if (
       rightLabel &&
@@ -1310,7 +1390,13 @@ export class CanvasSurface extends Renderable {
           height -
             (panel.underlay ? 2 : 4) -
             notes.length -
-            (panel.actionPlacement === 'dialog-footer' && panel.actions?.length ? 2 : 0)
+            (panel.actionPlacement === 'dialog-footer'
+              ? panel.actions?.length
+                ? 2
+                : panel.footerStatus
+                  ? 1
+                  : 0
+              : 0)
         ),
       };
     }
@@ -1403,13 +1489,12 @@ export class CanvasSurface extends Renderable {
         if (!enabled && this.#pointer) this.cancelGesture();
         return enabled;
       },
-      // Pan and shared pointer replay are one editor transaction above.
       onCameraMove: () => {},
     });
   }
 
   mouse(event: MouseEvent) {
-    // A no-button move recovers a release the terminal did not deliver.
+    if (event.type === 'down') this.activityEffects?.finishMutations();
     if (this.#pointer && (event.type === 'move' || event.type === 'out')) this.cancelGesture();
     const dismiss =
       this.panel &&
@@ -1515,6 +1600,15 @@ export class CanvasSurface extends Renderable {
         }
       }
       return;
+    }
+    if (!this.#pointer && !this.#minimapDrag && event.type === 'down' && event.button === 0) {
+      const badge = this.activityBadgeControls.find((control) =>
+        cellRectContainsPoint(control, { x: event.x - this.screenX, y: event.y - this.screenY })
+      );
+      if (badge) {
+        this.activityEffects?.locate(badge.id);
+        return;
+      }
     }
     if (!this.#pointer && !this.#minimapDrag && this.inspector?.mouse(event)) return;
     if (event.type === 'down' && event.button === 0 && !this.#pointer && !this.#minimapDrag) {

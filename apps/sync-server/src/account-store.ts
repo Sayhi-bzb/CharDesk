@@ -217,7 +217,6 @@ export class AccountStore {
       }
       if (previous.revision !== expectedRevision) { this.#db.exec("ROLLBACK"); return { status: "conflict" }; }
       const bytes = Buffer.byteLength(content, "utf8");
-      // The existing source remains stored, so conversion adds the full native snapshot.
       assertBackupWithinLimits(bytes, this.backupUsage(userId));
       this.#db.prepare("INSERT INTO retired_work_sources(work_id, content, bytes, revision) VALUES (?, ?, ?, ?)")
         .run(workId, previous.content, Buffer.byteLength(previous.content, "utf8"), previous.revision);

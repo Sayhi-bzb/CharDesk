@@ -44,7 +44,6 @@ test('worker captures immutable native documents, shares unchanged versions and 
     expect(parseCanvasDocument(updated.source).document.pages[1]!.grid).toEqual(
       model.documents.getDocumentDraft()!.pages[1]!.grid
     );
-    // UI-only page activation must invalidate the encoded body even if content is unchanged.
     model.documents.activatePage(address.documentId, 'other');
     const switched = await serializer.capture(model, address, 'Example');
     expect(parseCanvasDocument(switched.source).document.activePageId).toBe('other');
@@ -71,7 +70,7 @@ test('worker-backed persistence recovers clean semantic equivalence after unreco
     model.documents.applyCellPlanePatch(patch('B'), 'none');
     expect(model.dirty).toBe(true);
     model.documents.applyCellPlanePatch(patch('A'), 'none');
-    expect(model.dirty).toBe(true); // Unknown equivalence stays dirty until the worker replies.
+    expect(model.dirty).toBe(true);
     let observedClean = false;
     const detach = model.subscribe(() => { if (!model.dirty) observedClean = true; });
     const deadline = performance.now() + 3000;

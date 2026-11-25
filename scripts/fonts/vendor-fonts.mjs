@@ -621,7 +621,6 @@ const vendorArchiveFont = async (source, target, manifest, stylesheets) => {
     const relativeDir = path.posix.join(target.assetPrefix, source.id);
     await mkdir(path.join(target.outputRoot, relativeDir), { recursive: true });
     for (const member of [source.fontFile, ...source.licenseFiles]) {
-      // Extract only pinned members to stdout, never archive-controlled paths.
       const { stdout } = await execFileAsync("unzip", ["-p", archivePath, member], {
         encoding: "buffer", maxBuffer: 16 * 1024 * 1024,
       });
@@ -766,7 +765,6 @@ const vendorAssets = async () => withWorkingRoots(async (workingRoots) => {
       css = css.replaceAll(remoteUrl, `./${relativePath}`);
     }
 
-    // A locally installed font may be another version. Always use vendored bytes.
     css = css.replaceAll(/src:local\([^)]*\),/g, "src:");
     targetStylesheets.push(
       `/* ${source.family} ${source.version} */\n${css.trim()}`

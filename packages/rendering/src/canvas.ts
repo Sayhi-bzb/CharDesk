@@ -53,7 +53,6 @@ export type CharDeskCanvasFontFamilies = Record<
 export type CharDeskCanvasFontResolver = (input: {
   grapheme: string;
   route: CharDeskRenderFontRoute;
-  /** True only when the resolved strategy requests a native bold face. */
   bold: boolean;
   italic: boolean;
 }) => string | undefined;
@@ -226,7 +225,6 @@ export const resolveCharDeskCanvasFontFace = (input: Readonly<{
   };
 };
 
-/** Ink placement for an NF glyph; null retains ordinary font drawing when metrics are unavailable. */
 export const measureCharDeskCanvasNerdGlyph = (
   context: Pick<CharDeskCellCanvasContext, "font" | "textAlign" | "textBaseline" | "measureText">,
   input: Readonly<{
@@ -281,12 +279,10 @@ export const measureCharDeskCanvasNerdGlyph = (
 export type CharDeskFontMeasurement = Readonly<{
   metrics: CharDeskCellMetrics;
   source: "font-bounds" | "glyph-bounds" | "calibrated";
-  /** Uncalibrated regular-face geometry, before Profile grid overrides. */
   fontMetrics: CharDeskCellMetrics;
   fontMetricsSource: "font-bounds" | "glyph-bounds";
 }>;
 
-/** Measure a loaded display face. Content and DPR never participate in grid sizing. */
 export const measureCharDeskCanvasFont = (
   context: Pick<CharDeskCanvasContext, "save" | "restore" | "measureText" | "font" | "textBaseline">,
   fontProfile: CharDeskFontProfile = CHARDESK_SYSTEM_FONT_PROFILE,
@@ -311,7 +307,6 @@ export const measureCharDeskCanvasFont = (
     const descent = fontBounds ? sample.fontBoundingBoxDescent : sample.actualBoundingBoxDescent;
     const cellWidth = calibration?.width === undefined ? width : calibration.width * effectiveSize;
     const cellHeight = calibration?.height === undefined ? ascent + descent : calibration.height * effectiveSize;
-    // prepareFontGlyph already applies the face's baseline shift.
     const baseline = calibration?.baseline === undefined
       ? ascent - face.baselineShiftEm * effectiveSize : calibration.baseline * effectiveSize;
     if (![cellWidth, cellHeight].every((value) => Number.isFinite(value) && value > 0)
@@ -345,19 +340,16 @@ export type CharDeskFontAuditSample = Readonly<{
   bottom: number | null;
   overflowTop: number | null;
   overflowBottom: number | null;
-  /** Geometric estimate for repeated full-height │/█, not a raster guarantee. */
   verticalGap: number | null;
 }>;
 
 export type CharDeskFontAudit = Readonly<{
   measurement: CharDeskFontMeasurement;
   metrics: CharDeskCellMetrics;
-  /** Canvas cannot identify which fallback face supplied an individual glyph. */
   faceIdentity: "requested-stack-only";
   samples: readonly CharDeskFontAuditSample[];
 }>;
 
-/** Audit explicitly loaded samples without modifying the supplied grid. */
 export const auditCharDeskCanvasFont = (
   context: Pick<CharDeskCanvasContext, "save" | "restore" | "measureText" | "font" | "textBaseline">,
   profile: CharDeskFontProfile,
@@ -491,7 +483,6 @@ const drawDecoration = (
   ctx.stroke();
 };
 
-// drawDecoration pixel-aligns this coordinate; keep its stroke inside the Cell row.
 const underlineY = (rowY: number, cellHeight: number, lineWidth: number) =>
   rowY + cellHeight - Math.ceil(lineWidth / 2);
 
@@ -581,7 +572,6 @@ const prepareFontGlyph = (
   }
   return {
     text,
-    // Glyph positions preserve grid spacing; only allocation edges are pixel-aligned.
     x: anchor.x + (placement?.offsetX ?? 0),
     y: anchor.y + (placement?.baselineOffset
       ?? face.baselineShiftEm * metrics.fontSize * face.fontSizeScale * zoom),
@@ -692,7 +682,6 @@ export const drawCharDeskCanvasCells = (
   ctx.restore();
 };
 
-/** Draws a terminal-style cursor without changing the underlying Cell value. */
 export const drawCharDeskCanvasCursor = (
   ctx: CharDeskCanvasContext,
   entry: CharDeskCanvasCursorEntry
@@ -795,7 +784,6 @@ const clipCanvasRangeRegions = (
   ctx.clip();
 };
 
-/** Seeds a transparent overlay with the pixels a contrast Range must adapt against. */
 export const drawCharDeskCanvasRangeBackdrop = (
   ctx: CharDeskCanvasContext,
   entry: CharDeskCanvasRangeBackdropEntry
@@ -810,7 +798,6 @@ export const drawCharDeskCanvasRangeBackdrop = (
   ctx.restore();
 };
 
-/** Draws a Cell-coordinate Range without coupling rendering to selection state. */
 export const drawCharDeskCanvasRange = (
   ctx: CharDeskCanvasContext,
   entry: CharDeskCanvasRangeEntry
@@ -827,7 +814,6 @@ export const drawCharDeskCanvasRange = (
   }
   ctx.fill("evenodd");
   if (entry.style.surfaceEffect === "contrast") {
-    // Range borders are ordinary Host chrome even when the surface is adaptive.
     ctx.globalCompositeOperation = "source-over";
   }
   if (entry.phase === "moving") {
@@ -1055,9 +1041,7 @@ export const loadCharDeskCanvasFonts = async (
     }
   }
   try {
-    // WebKit may not activate supplementary-plane unicode-range faces for a
-    // Canvas-only request until the same face participates in DOM shaping.
-    try { await document.fonts.ready; } catch { /* Per-route loads report failure below. */ }
+    try { await document.fonts.ready; } catch { /* empty */ }
     await Promise.all(Array.from(groups.values(), async (group) => {
       try {
         const faces = await document.fonts.load(
@@ -1083,8 +1067,6 @@ export const loadCharDeskCanvasFonts = async (
   }
   try {
     await document.fonts.ready;
-  } catch {
-    // Per-route availability already records font loading failures.
-  }
+  } catch { /* empty */ }
   return availability;
 };

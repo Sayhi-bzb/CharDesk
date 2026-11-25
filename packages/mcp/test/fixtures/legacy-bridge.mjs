@@ -1,5 +1,3 @@
-// Minimal frozen v1 lifecycle: authenticated Agent WS, owner PID metadata, no
-// HTTP shutdown, and cleanup after releasing the port. No Canvas mutations.
 import { createServer } from 'node:http';
 import { readFile, unlink } from 'node:fs/promises';
 import { WebSocketServer } from 'ws';
@@ -26,7 +24,6 @@ await writePrivateJson(config.pairingFile, {
 process.once('SIGTERM', async () => {
   for (const socket of sockets.clients) socket.terminate();
   await new Promise((resolve) => http.close(resolve));
-  // Delayed legacy cleanup must finish before a successor publishes metadata.
   await new Promise((resolve) => setTimeout(resolve, 100));
   try {
     const saved = JSON.parse(await readFile(config.pairingFile, 'utf8'));

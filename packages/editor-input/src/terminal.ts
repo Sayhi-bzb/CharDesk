@@ -4,7 +4,6 @@ import { createOpenTuiKeymapHost } from '@opentui/keymap/opentui';
 import { registerBaseLayoutFallback } from '@opentui/keymap/addons/opentui';
 import { createInputSession } from './session.js';
 
-/** One OpenTUI modifier vocabulary for binding dispatch, recording and pointer fallback. */
 export function terminalKeyModifiers(
   event: Pick<KeyEvent, 'ctrl' | 'shift' | 'meta' | 'option' | 'super'>
 ) {
@@ -16,7 +15,6 @@ export function terminalKeyModifiers(
   };
 }
 
-/** OpenTUI meta is Option/Alt; super is Command. Recording uses the same catalog vocabulary. */
 export function terminalKeyInput(event: KeyEvent) {
   return createKeyInput({
     key:
@@ -37,7 +35,6 @@ export function terminalKeyInput(event: KeyEvent) {
   });
 }
 
-/** OpenTUI owns terminal negotiation and parsing; this adapter owns its subscriptions. */
 export function createTerminalInput(renderer: CliRenderer) {
   const session = createInputSession(createOpenTuiKeymapHost(renderer));
   const { keymap } = session;

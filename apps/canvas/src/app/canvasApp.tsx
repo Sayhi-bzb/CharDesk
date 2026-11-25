@@ -1,4 +1,3 @@
-// Loaded after the old-origin workspace transfer has settled.
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "@chardesk/fonts/fonts.css";
@@ -53,9 +52,6 @@ const publishRuntimeStatus = (status: "booting" | "ready" | "degraded" | "unavai
     ...(moduleFailure ? { moduleFailure } : {}),
   });
 };
-// MCP readiness follows the Canvas projection lifecycle, not the durability
-// tail. Persistence marks the runtime ready as soon as the active projection
-// is hydrated; catalog/checkpoint saves may continue in the background.
 const syncRuntimeStatus = () => {
   const persistence = host.canvas.getPersistenceSnapshot();
   if (persistence.phase === "ready") {
@@ -96,10 +92,6 @@ configureLocalAgent({
 });
 restoreLocalAgent();
 void discoverLocalAgent();
-// The persistence subscription above is the source of truth. `ready` may
-// resolve after background durability work, and a failed restore resolves into
-// temporary/degraded mode rather than rejecting, so it is not a reliable
-// handshake signal.
 let siteToolsGeneration = 0;
 const syncChardeskSiteTools = async () => {
   const generation = ++siteToolsGeneration;
@@ -147,8 +139,6 @@ const syncChardeskSiteTools = async () => {
 };
 
 void syncChardeskSiteTools();
-// Code Mode is opportunistically warmed in the background. Primitive Canvas
-// tools do not depend on this network/WASM fetch.
 void warmCanvasCodeRuntime().catch(() => undefined);
 window.addEventListener('popstate', () => { void syncChardeskSiteTools(); });
 window.addEventListener(APP_ROUTE_EVENT, () => { void syncChardeskSiteTools(); });

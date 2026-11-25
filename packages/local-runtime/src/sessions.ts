@@ -31,7 +31,6 @@ export type SessionRemovalPlan = Readonly<{
   fileUnavailable?: string;
 }>;
 
-/** Long-lived session identity and file ownership, separate from the open editor workspace. */
 export class LocalSessions {
   readonly agents: CanvasAgents;
   #workspace: TerminalWorkspace | null = null;
@@ -563,7 +562,6 @@ export class LocalSessions {
       if (entry.state === 'prepared') await restoreManagedDeletion(entry);
       else await finishManagedDeletion(entry);
       ticket?.effect(`removal-repaired:${id}`);
-      // Physical repair is durable; completing its journal is mandatory even if dismissed.
       this.catalog.clearDeletion(id, entry.state);
       ticket?.commit(() => {});
     } finally {

@@ -1,0 +1,275 @@
+<div id="agent-feedback-demo">
+  <style>
+    #agent-feedback-demo { display: grid; gap: 14px; }
+    #agent-feedback-demo .demo-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    #agent-feedback-demo .sample-control { display: flex; align-items: center; gap: 8px; }
+    #agent-feedback-demo .demo-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    #agent-feedback-demo .identity-options { display: flex; gap: 7px; align-items: center; }
+    #agent-feedback-demo .product {
+      --paper: light-dark(#fafaf7, #191c23);
+      --ink: light-dark(#292d38, #e0e4ed);
+      --quiet: light-dark(#69717f, #a0a8b8);
+      --chrome: light-dark(#f0f0ed, #222631);
+      --reader: light-dark(#7753be, #b49ae9);
+      --writer: light-dark(#137d78, #6ac9bc);
+      --rule: light-dark(#d8dbe0, #3b4250);
+      background: var(--paper); color: var(--ink);
+      font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow: hidden;
+    }
+    #agent-feedback-demo canvas { display: block; width: 100%; height: 380px; }
+    #agent-feedback-demo .dock { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 14px; background: var(--chrome); }
+    #agent-feedback-demo .dock-tools { display: flex; gap: 18px; }
+    #agent-feedback-demo .dock-tools span:nth-child(2) { text-decoration: underline; text-underline-offset: 4px; }
+    #agent-feedback-demo .view-status { color: var(--quiet); padding: 2px 14px 5px; background: var(--chrome); }
+    #agent-feedback-demo .paint-probe { position: absolute; visibility: hidden; pointer-events: none; }
+    #agent-feedback-demo .identity-button { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 30px; height: 30px; border: 1px solid var(--border); background: transparent; border-radius: 50%; }
+    #agent-feedback-demo .identity-button[aria-pressed="true"] { outline: 2px solid var(--foreground); outline-offset: 2px; }
+    #agent-feedback-demo .identity-dot { display: block; width: 14px; height: 14px; border-radius: 50%; background: light-dark(#7753be, #b49ae9); }
+    #agent-feedback-demo .identity-button[data-role="writer"] .identity-dot { background: light-dark(#137d78, #6ac9bc); }
+    @media (pointer: coarse) { #agent-feedback-demo .identity-button { width: 44px; height: 44px; } }
+  </style>
+  <div class="demo-controls" role="group" aria-label="选择交互演示">
+    <button type="button" class="btn" data-action="read">读取区域</button>
+    <button type="button" class="btn" data-action="write">写入 · 自动选择</button>
+    <label class="sample-control form-label">内容量
+      <select class="form-select" data-sample aria-label="演示内容量">
+        <option value="small">少量内容</option>
+        <option value="large">大量内容</option>
+      </select>
+    </label>
+  </div>
+  <div class="demo-meta">
+    <div class="identity-options" role="group" aria-label="角色颜色">
+      <span class="text-small">角色颜色</span>
+      <button class="identity-button cursor-interaction" type="button" data-role="reader" aria-label="紫色身份" aria-pressed="true"><span class="identity-dot" aria-hidden="true"></span></button>
+      <button class="identity-button cursor-interaction" type="button" data-role="writer" aria-label="青色身份" aria-pressed="false"><span class="identity-dot" aria-hidden="true"></span></button>
+    </div>
+    <span class="text-small" data-status role="status" aria-live="polite">选择一种效果播放</span>
+  </div>
+  <div class="product" aria-label="终端画布交互预演">
+    <span class="paint-probe" aria-hidden="true"></span>
+    <canvas role="img" aria-label="Unicode 画布。读取显示短暂填充；写入按内容量自动选择逐字光标或区块呈现。">Unicode 画布交互预演</canvas>
+    <div class="dock"><div class="dock-tools"><span>Edit</span><span>Hand</span><span>Style</span></div><span>Agents</span></div>
+    <div class="view-status">F1 for shortcuts</div>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('agent-feedback-demo');
+      const product = root.querySelector('.product');
+      const canvas = root.querySelector('canvas');
+      const context = canvas.getContext('2d');
+      const status = root.querySelector('[data-status]');
+      const probe = root.querySelector('.paint-probe');
+      const buttons = Array.from(root.querySelectorAll('[data-action]'));
+      const roleButtons = Array.from(root.querySelectorAll('[data-role]'));
+      const sampleSelect = root.querySelector('[data-sample]');
+      const segmenter = new Intl.Segmenter('zh', { granularity: 'grapheme' });
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const glyphs = (text) => Array.from(segmenter.segment(text), (item) => item.segment);
+      const widthOf = (text) => /[\p{Extended_Pictographic}\p{Regional_Indicator}\u1100-\u115f\u2329\u232a\u2e80-\ua4cf\uac00-\ud7af\uf900-\ufaff\ufe10-\ufe6f\uff01-\uff60\uffe0-\uffe6]/u.test(text) ? 2 : 1;
+      const cellsOf = (text) => glyphs(text).reduce((sum, glyph) => sum + widthOf(glyph), 0);
+      const box = (lines, width) => [
+        '┌' + '─'.repeat(width - 2) + '┐',
+        ...lines.map((line) => '│ ' + line + ' '.repeat(Math.max(0, width - 4 - cellsOf(line))) + ' │'),
+        '└' + '─'.repeat(width - 2) + '┘',
+      ];
+      const original = box(['SHARED CANVAS', '', '想法 → 文字 → 图形', '人和 Agent 一起创作'], 26);
+      const samples = {
+        small: ['Hello, Unicode.', '你好，世界 🦀', '', 'Human ──→ Canvas', 'Agent ──→ Canvas'],
+        large: ['Hello, Unicode.', '你好，世界 🦀', '', 'Human ──→ Canvas', 'Agent ──→ Canvas', '',
+          'Read → Write → Share', 'CLI / TUI / Web', '共同编辑同一份内容', '保留 Unicode 字形', '角色颜色保持一致'],
+      };
+      const CHARACTER_LIMIT = 120;
+      let sample = 'small';
+      let output = [];
+      let writeMode = 'character';
+      let contentSize = 0;
+      const writeLabel = () => `${contentSize} 字形 · ${writeMode === 'character' ? '逐字光标' : '区块呈现'}`;
+      const actions = {
+        read: { duration: 1500, label: '读取范围短亮', done: '范围已消失，原有光标保持不变' },
+        write: { duration: 6500, label: '正在写入', done: '写入完成' },
+      };
+      let role = 'reader';
+      let operation = null;
+      let started = 0;
+      let frame = 0;
+      let finished = false;
+      let painted = [];
+      let coordinates;
+      let dimensions = { width: 0, height: 0, cell: 0, line: 24, cols: 0 };
+      const color = (name) => {
+        probe.style.color = 'var(--' + name + ')';
+        return getComputedStyle(probe).color;
+      };
+      const build = () => {
+        const wide = dimensions.cols >= 66;
+        coordinates = { source: { x: 3, y: 4 }, target: { x: wide ? 36 : 3, y: wide ? 4 : 12 } };
+        output = box(samples[sample], 25);
+        painted = [];
+        output.forEach((line, row) => {
+          let x = coordinates.target.x;
+          const segments = glyphs(line);
+          const lastText = segments.findLastIndex((glyph) => glyph !== ' ' && glyph !== '│');
+          segments.forEach((glyph, index) => {
+            const weight = glyph === ' ' ? (index > lastText ? .025 : .18)
+              : /[─┌┐└┘│]/u.test(glyph) ? .24
+              : /[,.!?，。！？]/u.test(glyph) ? 1.8 : 1;
+            painted.push({ x, y: coordinates.target.y + row, glyph, width: widthOf(glyph), weight });
+            x += widthOf(glyph);
+          });
+          painted[painted.length - 1].weight += 1.5;
+        });
+        const total = painted.reduce((sum, item) => sum + item.weight, 0);
+        let accumulated = 0;
+        painted.forEach((item) => { accumulated += item.weight; item.at = accumulated / total; });
+        contentSize = painted.filter((item) => !/^\s+$/u.test(item.glyph)).length;
+        writeMode = contentSize <= CHARACTER_LIMIT ? 'character' : 'block';
+        actions.write.duration = writeMode === 'character'
+          ? Math.max(1800, contentSize * 60)
+          : Math.min(3600, Math.max(1600, Math.ceil(output.length / 2) * 300));
+        canvas.dataset.writeMode = writeMode;
+        canvas.dataset.contentSize = String(contentSize);
+        canvas.dataset.writeDuration = String(actions.write.duration);
+      };
+      const easeOut = (value) => 1 - Math.pow(1 - Math.max(0, Math.min(1, value)), 3);
+      const birth = (item, duration) => item.at * duration;
+      const text = (value, x, y, ink) => {
+        let column = x;
+        glyphs(value).forEach((glyph) => {
+          context.fillStyle = ink;
+          context.fillText(glyph, column * dimensions.cell, y * dimensions.line);
+          column += widthOf(glyph);
+        });
+      };
+      const rect = (x, y, width, height, ink, alpha, outline = false) => {
+        context.save(); context.globalAlpha = alpha; context.fillStyle = ink; context.strokeStyle = ink;
+        if (outline) context.strokeRect(x * dimensions.cell + .5, y * dimensions.line + .5, width * dimensions.cell - 1, height * dimensions.line - 1);
+        else context.fillRect(x * dimensions.cell, y * dimensions.line, width * dimensions.cell, height * dimensions.line);
+        context.restore();
+      };
+      const draw = (now) => {
+        const { width, height, cell, line } = dimensions;
+        if (!cell || !coordinates) return;
+        const ink = color('ink'), quiet = color('quiet'), actor = color(role);
+        const elapsed = operation ? Math.max(0, now - started) : 0;
+        const duration = operation ? actions[operation].duration : 1;
+        const progress = Math.min(1, elapsed / duration);
+        context.clearRect(0, 0, width, height);
+        context.font = getComputedStyle(product).font;
+        context.textBaseline = 'top';
+        text('CANVAS 01', 3, 1, quiet);
+        if (operation === 'read' && progress < 1) {
+          const opacity = easeOut(elapsed / 170) * (1 - easeOut((elapsed - 640) / (duration - 640)));
+          rect(coordinates.source.x, coordinates.source.y, 26, original.length, actor, opacity * .20);
+        }
+        original.forEach((row, index) => text(row, coordinates.source.x, coordinates.source.y + index, ink));
+        rect(5, 11, 1, 1, quiet, .65, true);
+        if (operation && operation !== 'read') {
+          let count = 0;
+          if (writeMode === 'character')
+            while (count < painted.length && birth(painted[count], duration) <= elapsed) count++;
+          if (writeMode === 'block') {
+            const blocks = Math.ceil(output.length / 2);
+            const rows = Math.min(output.length, Math.floor(progress * blocks) * 2);
+            count = painted.filter((item) => item.y < coordinates.target.y + rows).length;
+          }
+          if (progress === 1) count = painted.length;
+          const settling = Math.max(0, 1 - Math.max(0, elapsed - duration) / 850);
+          painted.slice(0, count).forEach((item, index) => {
+            if (writeMode === 'block')
+              rect(item.x, item.y, item.width, 1, actor, settling * .12);
+            else if (!reducedMotion.matches && count - index <= 12) {
+              const distance = (count - index - 1) / 12;
+              const freshness = 1 - easeOut((elapsed - birth(item, duration)) / 700);
+              rect(item.x, item.y, item.width, 1, actor, .20 * (1 - distance) * freshness);
+            }
+            context.save();
+            if (writeMode !== 'block' && !reducedMotion.matches)
+              context.globalAlpha = .55 + .45 * easeOut((elapsed - birth(item, duration)) / 65);
+            text(item.glyph, item.x, item.y, ink);
+            context.restore();
+          });
+          if (writeMode !== 'block') {
+            const last = painted[painted.length - 1];
+            const caret = painted[count] ?? { x: last.x + last.width, y: last.y, width: 1 };
+            const opacity = easeOut(elapsed / 90) * (1 - easeOut((elapsed - duration - 120) / 280));
+            rect(caret.x, caret.y, caret.width, 1, actor, opacity * .88);
+          }
+        }
+        if (operation && elapsed < duration + 900) frame = requestAnimationFrame(draw);
+        if (operation && progress === 1 && !finished) {
+          finished = true;
+          status.textContent = operation === 'write' ? `完成 · ${writeLabel()}` : actions[operation].done;
+        }
+      };
+      const persist = () => {
+        if (window.openai && window.openai.setWidgetState)
+          window.openai.setWidgetState({ modelContent: { interaction: operation, roleColor: role, sample }, privateContent: null }).catch(() => {});
+      };
+      const play = (action, save = true) => {
+        cancelAnimationFrame(frame);
+        operation = action;
+        finished = false;
+        started = performance.now() - (reducedMotion.matches ? actions[action].duration : 0);
+        status.textContent = action === 'write' ? `正在写入 · ${writeLabel()}` : actions[action].label;
+        buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.action === action)));
+        draw(performance.now());
+        if (save) persist();
+      };
+      const resize = () => {
+        const bounds = canvas.getBoundingClientRect();
+        const scale = window.devicePixelRatio || 1;
+        context.font = getComputedStyle(product).font;
+        dimensions = { width: bounds.width, height: bounds.height, cell: context.measureText('M').width, line: 24, cols: Math.floor(bounds.width / context.measureText('M').width) };
+        build();
+        const height = Math.max(dimensions.cols >= 66 ? 380 : 490,
+          (coordinates.target.y + output.length + 1) * dimensions.line);
+        canvas.style.height = `${height}px`;
+        dimensions.height = height;
+        canvas.width = Math.round(bounds.width * scale);
+        canvas.height = Math.round(height * scale);
+        context.setTransform(scale, 0, 0, scale, 0, 0);
+        cancelAnimationFrame(frame);
+        draw(performance.now());
+      };
+      const restore = (state) => {
+        const saved = state && state.modelContent;
+        if (!saved) return;
+        const restoredSample = saved.sample === 'large' ? 'large' : 'small';
+        const restoredOperation = Object.hasOwn(actions, saved.interaction) ? saved.interaction : null;
+        if (saved.roleColor === role && restoredOperation === operation && restoredSample === sample) return;
+        role = saved.roleColor === 'writer' ? 'writer' : 'reader';
+        sample = restoredSample;
+        sampleSelect.value = sample;
+        roleButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.role === role)));
+        operation = restoredOperation;
+        started = -Infinity;
+        finished = true;
+        buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.action === operation)));
+        resize();
+        status.textContent = operation === 'read' ? actions.read.done : writeLabel();
+      };
+      buttons.forEach((button) => button.addEventListener('click', () => play(button.dataset.action)));
+      roleButtons.forEach((button) => button.addEventListener('click', () => {
+        role = button.dataset.role;
+        roleButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+        if (operation) play(operation, false); else draw(performance.now());
+        persist();
+      }));
+      sampleSelect.addEventListener('change', () => {
+        sample = sampleSelect.value;
+        resize();
+        if (operation === 'write') play('write');
+        else { status.textContent = writeLabel(); persist(); }
+      });
+      new ResizeObserver(resize).observe(canvas);
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', resize);
+      window.addEventListener('openai:set_globals', (event) => {
+        if (event.detail && event.detail.globals && event.detail.globals.widgetState) restore(event.detail.globals.widgetState);
+      });
+      resize();
+      restore(window.openai && window.openai.widgetState);
+    })();
+  </script>
+</div>

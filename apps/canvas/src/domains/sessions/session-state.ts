@@ -30,8 +30,6 @@ export const createSessionId = (sessions: readonly CanvasSessionDescriptor[]) =>
   const existing = new Set(sessions.map((session) => session.id));
   let candidate = "";
   do {
-    // Canvas IDs are part of the agent protocol, so keep them compact while
-    // retaining enough entropy for persistence and cross-tab creation.
     candidate = `cv-${globalThis.crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
   } while (existing.has(candidate));
   return candidate;

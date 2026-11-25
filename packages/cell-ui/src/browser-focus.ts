@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState, type FocusEvent, type RefObject } from "react";
 
-/** Logical focus belongs to FocusManager; this hook owns only browser focus presence. */
 export const useSurfaceFocus = (ref: RefObject<HTMLElement | null>) => {
   const [active, setActive] = useState(false);
   const current = useRef(false);
@@ -42,7 +41,6 @@ export const useSurfaceFocus = (ref: RefObject<HTMLElement | null>) => {
       if (event.relatedTarget !== null) {
         publish(windowActive.current && event.currentTarget.contains(event.relatedTarget));
       } else {
-        // Allow internal semantic-node replacement to restore focus before checking body/null.
         queueMicrotask(() => { if (alive.current) refresh(); });
       }
     },

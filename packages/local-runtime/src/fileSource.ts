@@ -25,7 +25,6 @@ export async function readFileSource(path: string): Promise<FileSourceSnapshot> 
   return { source, digest: sourceDigest(source) };
 }
 
-/** One file binding owns the baseline and advisory observation, never editor state. */
 export class FileSourceBinding {
   #baseline: FileSourceSnapshot;
   #observation: FileSourceObservation;
@@ -54,7 +53,6 @@ export class FileSourceBinding {
     this.#baseline = { source, digest: sourceDigest(source) };
     this.#observation = { state: 'current', digest: this.#baseline.digest };
   }
-  /** Poll metadata cheaply; explicit checks/focus and commit checks always read content. */
   async inspectIfChanged() {
     try {
       const signature = await stat(this.path, { bigint: true })

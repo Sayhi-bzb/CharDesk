@@ -23,7 +23,6 @@ import { watchWorkspaceSources } from './sourceMonitor.ts';
 import { noticeText, noticeDetail, type TerminalNotice } from './feedback.ts';
 import type { OperationContext } from '@chardesk/local-runtime/operations';
 
-/** List dismissal aliases; text inputs retain their normal Backspace/Delete semantics. */
 function isListCloseKey(key: KeyEvent) {
   return (
     !key.ctrl &&
@@ -35,7 +34,6 @@ function isListCloseKey(key: KeyEvent) {
   );
 }
 
-/** Transient Host panels. All document mutations still run through shared commands. */
 export class WorkspaceControls {
   #kind = '';
   #includeArchived = false;
@@ -734,7 +732,6 @@ export class WorkspaceControls {
         const point = this.surface.placement.at;
         try {
           prepareCanvasRowsWrite(point, materialized.rows);
-          // Clear transient state before the synchronous command publishes its write.
           this.dismiss();
           this.surface.model.commands.insertRows(materialized.rows, point);
         } catch {

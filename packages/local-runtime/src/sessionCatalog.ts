@@ -38,7 +38,6 @@ const isAlive = (pid: number) => {
   }
 };
 
-/** Incremental metadata transactions; native documents remain the content authority. */
 export class LocalSessionCatalog {
   #db: Database;
   #owner = randomUUID();
@@ -74,7 +73,6 @@ export class LocalSessionCatalog {
             PRAGMA user_version = 1;
           `);
           }
-          // Validate the required shape without rewriting a future or damaged database.
           this.#db.query('SELECT id, seed, revision FROM sessions LIMIT 0').all();
           this.#db.query('SELECT path, owner, pid FROM write_owners LIMIT 0').all();
           if (version < 2)
@@ -277,7 +275,6 @@ export class LocalSessionCatalog {
       .query('DELETE FROM session_deletions WHERE sessionId = ? AND state = ?')
       .run(id, state);
   }
-  /** No expiry: a paused living writer never loses ownership to another process. */
   claim(path: string) {
     const token = `${this.#owner}:${randomUUID()}`;
     this.#db

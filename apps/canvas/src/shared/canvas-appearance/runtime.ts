@@ -35,7 +35,6 @@ const toArtifactPalette = (
   grid: theme.canvas.artifact.grid,
 });
 
-/** Host-theme projection for Canvas consumers, including imperative commands. */
 export function createCanvasAppearanceRuntime() {
   let snapshot: CanvasAppearanceSnapshot = {
     resolvedTheme: "light",

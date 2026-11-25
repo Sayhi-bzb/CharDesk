@@ -45,7 +45,6 @@ const p95 = (samples: Float64Array, length: number) => {
   return values[Math.max(0, Math.ceil(values.length * 0.95) - 1)] ?? 0;
 };
 
-/** Tracks exact visible-region rendering without owning rendering state. */
 export class CanvasRenderExperience {
   readonly #now: () => number;
   #viewportActivities = 0;

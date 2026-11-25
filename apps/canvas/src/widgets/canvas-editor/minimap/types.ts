@@ -14,7 +14,6 @@ type MinimapColors = {
   viewportStroke: string;
 };
 
-/** Complete input required for one deterministic minimap frame. */
 export type MinimapRenderSnapshot = {
   reader: CanvasSurfaceReader;
   contentRevision: unknown;

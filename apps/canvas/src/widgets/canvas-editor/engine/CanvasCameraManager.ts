@@ -42,7 +42,6 @@ const interpolateViewport = (
   zoom: start.zoom + (end.zoom - start.zoom) * progress,
 });
 
-/** Owns all imperative camera queues, constraints, and animations. */
 export class CanvasCameraManager {
   private readonly port: CanvasCameraPort;
   private readonly frameScheduler: CanvasFrameScheduler;
@@ -145,7 +144,6 @@ export class CanvasCameraManager {
     this.viewportInteraction.queueZoomDelta(deltaZoom, anchor.x, anchor.y);
   }
 
-  /** Queue the latest absolute viewport for a transient gesture such as pinch. */
   queueTransientViewport(viewport: CanvasViewportState): void {
     if (
       !Number.isFinite(viewport.zoom) ||

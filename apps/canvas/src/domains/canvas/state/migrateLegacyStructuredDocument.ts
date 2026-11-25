@@ -26,7 +26,6 @@ const decodeSceneMap = (scene: Y.Map<unknown>) =>
       .filter((node): node is StructuredNode => node !== null)
   );
 
-/** Converts retired Structured storage into the active CellPlane schema in place. */
 export const migrateLegacyStructuredDocument = (doc: Y.Doc, documentId: string) => {
   const root = getCanvasDocumentRoot(doc);
   const legacyRootScene = doc.getMap<unknown>("structured-scene");

@@ -23,7 +23,6 @@ const loadCanvasFont = async (font: DisplayFont) => {
   await loadBrowserFont(option);
 };
 
-/** Host-owned preference; no document/history state and no renderer-side globals. */
 export function createCanvasFontRuntime({
   storage = false,
   load = loadCanvasFont,
@@ -56,7 +55,7 @@ export function createCanvasFontRuntime({
       ]);
       if (disposed || version !== request) return;
       publish({ font, requestedFont: font, status: "idle", profile: displayFontOptions[font].profile });
-      try { if (storage) storage.setItem(CANVAS_FONT_STORAGE_KEY, font); } catch { /* Session-only preference. */ }
+      try { if (storage) storage.setItem(CANVAS_FONT_STORAGE_KEY, font); } catch { /* empty */ }
     } catch {
       if (!disposed && version === request) publish({ ...snapshot, status: "error" });
     } finally {
@@ -79,7 +78,7 @@ export function createCanvasFontRuntime({
           storage && storage.getItem(CANVAS_FONT_STORAGE_KEY),
         );
         if (isDisplayFont(stored)) font = stored;
-      } catch { /* Default remains available without storage. */ }
+      } catch { /* empty */ }
       void select(font);
     },
     dispose: () => { disposed = true; request += 1; listeners.clear(); },

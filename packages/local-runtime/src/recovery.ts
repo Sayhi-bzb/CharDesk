@@ -1,4 +1,3 @@
-/** Recovery preserves the original target identity; a caller explicitly chooses the recovered copy. */
 export class CanvasRecoveryRequired extends Error {
   readonly code = 'canvas_recovered';
   constructor(

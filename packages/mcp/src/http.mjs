@@ -1,7 +1,6 @@
 import { request } from 'node:http';
 import { BridgeError, cancelled, MAX_MESSAGE_BYTES } from './protocol.mjs';
 
-// No pooled idle sockets: a completed call must not keep its stdio process alive.
 export const requestJson = (url, { method = 'GET', headers, body, signal, timeout = 5000 } = {}) =>
   new Promise((resolve, reject) => {
     if (signal?.aborted) { reject(cancelled()); return; }

@@ -12,7 +12,6 @@ const projectObservedSurface = (
   };
 };
 
-/** Projects active Yjs document changes into the editor's derived Zustand state. */
 export const subscribeCanvasDocumentProjection = (
   documents: CanvasDocumentRegistry,
   reportIntegrityIssues: (issues: CollaborationIntegrityIssue[]) => void,

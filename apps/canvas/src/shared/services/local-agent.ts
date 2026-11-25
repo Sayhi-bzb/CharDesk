@@ -49,15 +49,13 @@ export function getRememberedLocalAgent(): Pairing | null {
     const saved = JSON.parse(localStorage.getItem(pairingKey) ?? 'null') as Pairing | null;
     if (saved && typeof saved.url === 'string' && typeof saved.scope === 'string'
       && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) {
-      // Pairings created before permission grants were persisted remain scoped to
-      // their original Canvas. They are never widened to application scope.
       const legacyPermissions = saved.permissions ?? DEFAULT_LOCAL_AGENT_PERMISSIONS;
       if (Object.keys(DEFAULT_LOCAL_AGENT_PERMISSIONS).every((key) => typeof legacyPermissions[key as LocalAgentPermission] === 'boolean')) {
         return { ...saved, permissions: legacyPermissions };
       }
     }
     localStorage.removeItem(pairingKey);
-  } catch { /* Storage may be unavailable; explicit pairing still works. */ }
+  } catch { /* empty */ }
   return null;
 }
 const listeners = new Set<() => void>();
@@ -78,7 +76,7 @@ export const getLocalAgentRuntimeSnapshot = () => runtimeSnapshot;
 export const setLocalAgentRuntimeStatus = (next: Omit<LocalAgentRuntimeSnapshot, 'protocolVersion'>) => {
   runtimeSnapshot = { protocolVersion: 2, ...next };
   if (socket?.readyState === WebSocket.OPEN) {
-    try { socket.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* The bridge may be closing. */ }
+    try { socket.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* empty */ }
   }
 };
 export const configureLocalAgent = (next: LocalAgentPort) => { port = next; enabled = readEnabled(); restoreLocalAgent(); };
@@ -108,17 +106,17 @@ export function restoreLocalAgent() {
   const currentCanvas = port?.canvasId?.() ?? currentScope;
   const matches = saved && (saved.scope === 'application' ? saved.scope === currentScope : saved.scope === currentCanvas);
   if (getLocalAgentEnabled() && !socket && currentScope && (!saved || matches)) {
-    try { connectLocalAgent(matches ? saved.url : DEFAULT_LOCAL_AGENT_URL, true, matches ? saved.permissions : DEFAULT_LOCAL_AGENT_PERMISSIONS, matches ? saved.scope : undefined); } catch { /* Retry when the local agent becomes available. */ }
+    try { connectLocalAgent(matches ? saved.url : DEFAULT_LOCAL_AGENT_URL, true, matches ? saved.permissions : DEFAULT_LOCAL_AGENT_PERMISSIONS, matches ? saved.scope : undefined); } catch { /* empty */ }
   }
 }
 
 export function forgetLocalAgent() {
-  try { localStorage.removeItem(pairingKey); } catch { /* No stored pairing to remove. */ }
+  try { localStorage.removeItem(pairingKey); } catch { /* empty */ }
   enabled = false;
-  try { localStorage.setItem(disabledKey, 'true'); } catch { /* Storage may be unavailable. */ }
-  try { localStorage.removeItem(enabledKey); } catch { /* Storage may be unavailable. */ }
+  try { localStorage.setItem(disabledKey, 'true'); } catch { /* empty */ }
+  try { localStorage.removeItem(enabledKey); } catch { /* empty */ }
   if (socket?.readyState === WebSocket.OPEN) {
-    try { socket.send(JSON.stringify({ method: 'revoke' })); } catch { /* The bridge may already be closing. */ }
+    try { socket.send(JSON.stringify({ method: 'revoke' })); } catch { /* empty */ }
   }
   disconnectLocalAgent();
 }
@@ -143,11 +141,11 @@ export const setLocalAgentEnabled = (next: boolean, grant = DEFAULT_LOCAL_AGENT_
       localStorage.removeItem(enabledKey);
       localStorage.setItem(disabledKey, 'true');
     }
-  } catch { /* Storage may be unavailable; the in-memory switch still applies. */ }
+  } catch { /* empty */ }
   if (!next) { disconnectLocalAgent(); return; }
   const saved = getRememberedLocalAgent();
   try { connectLocalAgent(saved?.url || DEFAULT_LOCAL_AGENT_URL, true, saved?.permissions ?? grant, saved?.scope); }
-  catch { /* The retry loop will connect when a local agent starts. */ }
+  catch { /* empty */ }
   publish(status);
 };
 
@@ -168,7 +166,7 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
   if (!activePort || !applicationScope || !scope || (scope !== 'application' && currentCanvas !== scope)) throw new Error('Open a Canvas first');
   if (remember) {
     enabled = true;
-    try { localStorage.setItem(enabledKey, 'true'); } catch { /* Storage may be unavailable. */ }
+    try { localStorage.setItem(enabledKey, 'true'); } catch { /* empty */ }
   }
   disconnectLocalAgent();
   automatic = remember;
@@ -264,19 +262,19 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
       if (message.method === 'authorized') {
         if (socket === connection) {
           publish('connected');
-          try { connection.send(JSON.stringify({ method: 'ready', protocolVersion: 1 })); } catch { /* The bridge may be closing. */ }
+          try { connection.send(JSON.stringify({ method: 'ready', protocolVersion: 1 })); } catch { /* empty */ }
         }
         return;
       }
       if (message.method === 'ready_probe') {
         if (socket === connection && connection.readyState === WebSocket.OPEN) {
-          try { connection.send(JSON.stringify({ method: 'ready', protocolVersion: 1 })); } catch { /* The bridge may be closing. */ }
+          try { connection.send(JSON.stringify({ method: 'ready', protocolVersion: 1 })); } catch { /* empty */ }
         }
         return;
       }
       if (message.method === 'runtime_probe') {
         if (socket === connection && connection.readyState === WebSocket.OPEN) {
-          try { connection.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* The bridge may be closing. */ }
+          try { connection.send(JSON.stringify({ method: 'runtime_status', status: runtimeSnapshot })); } catch { /* empty */ }
         }
         return;
       }
@@ -285,7 +283,6 @@ export function connectLocalAgent(value = DEFAULT_LOCAL_AGENT_URL, remember = fa
         return;
       }
     } catch {
-      // A requested persistent pairing must not silently become temporary.
       if (remember) { automatic = false; connection.close(); publish('error'); return; }
     }
     const schedule = readOnlyRequest(data) ? withReadLock : withWriteLock;

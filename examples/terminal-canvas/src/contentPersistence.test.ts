@@ -23,12 +23,10 @@ test('version storage recognizes either side of file replacement and invalidates
     store.prepareVersion('canvas', 'b', 'version-b');
     store.close();
     store = new LocalCanvasStore(path);
-    // Crash before rename: disk still contains A.
     expect(store.versionFor('canvas', 'a')).toBe(original);
     store.prepareVersion('canvas', 'b', 'version-b');
     store.close();
     store = new LocalCanvasStore(path);
-    // Crash after rename but before acknowledgement: B identifies the prepared version.
     expect(store.versionFor('canvas', 'b')).toBe('version-b');
     store.close();
     store = new LocalCanvasStore(path);

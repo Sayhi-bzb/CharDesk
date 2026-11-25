@@ -1,11 +1,8 @@
 export type AgentToolExecutionContext = Readonly<{
   signal?: AbortSignal;
-  /** Primitive edits join the outer composition checkpoint. */
   history?: 'inherit';
 }>;
 
-/** Content blocks are the transport-neutral representation used by tools that
- * can return more than plain JSON text (for example a Canvas image read). */
 export type AgentToolContentBlock =
   | Readonly<{ type: 'text'; text: string }>
   | Readonly<{ type: 'note'; text: string }>

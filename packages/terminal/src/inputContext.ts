@@ -35,7 +35,6 @@ export class SurfaceLease {
   dispose() { this.#abort.abort(); this.#task = null; }
 }
 
-/** One Host authority for input admission and surface/request ownership. */
 export class TerminalInputContext {
   #phase: 'ready' | 'closing' | 'disposed' = 'ready';
   #frames: Array<{ panel: TerminalPanel; owner: object; lease: SurfaceLease; commands: ReadonlySet<string> }> = [];

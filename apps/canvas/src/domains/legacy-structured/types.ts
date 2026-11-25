@@ -1,6 +1,5 @@
 import type { Point, TextAttributes } from "@/shared/types";
 
-// Read-only schema retained for flattening retired Structured Canvas content.
 
 export interface StructuredNodeStyle {
   color: string;

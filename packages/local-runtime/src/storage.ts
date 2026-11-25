@@ -33,7 +33,7 @@ export async function atomicWrite(
     }
     await beforeCommit?.();
     if (replace) await rename(temporary, path);
-    else await link(temporary, path); // atomic no-clobber publication, including symlinks
+    else await link(temporary, path);
     await syncDirectory(dirname(path));
   } finally {
     await unlink(temporary).catch((error: NodeJS.ErrnoException) => {

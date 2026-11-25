@@ -1,6 +1,5 @@
 import type { Translate } from './i18n.ts';
 
-/** One consumer handoff, shared verbatim by the view and its Copy action. */
 export function agentSetupText(t: Translate) {
   return [
     t('Install and configure CharDesk for this coding agent:'),

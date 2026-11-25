@@ -26,7 +26,7 @@ export function AgentDialog({ open, onOpenChange }: {
     }
     try {
       setLocalAgentEnabled(true, saved?.permissions ?? permissions);
-    } catch { /* The switch remains off when no local agent is available. */ }
+    } catch { /* empty */ }
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

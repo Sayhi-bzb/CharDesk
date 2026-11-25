@@ -1,6 +1,5 @@
 import { BOX_CHARS } from "@/shared/lib/constants";
 
-// Read-only geometry retained by the legacy flattening boundary.
 import type { GridPoint, NodeBounds, Point } from "@/shared/types";
 import { getBoxPoints } from "@/shared/utils/shapes";
 import type { StructuredSplitBoxTreeNode } from "./types";

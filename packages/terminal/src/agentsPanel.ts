@@ -18,7 +18,6 @@ type CallDetail = {
   selected: number;
 };
 
-/** Activity inbox; acknowledging a rendered revision never consumes a later update. */
 export class TerminalAgentsPanel {
   #panel: TerminalPanel | null = null;
   #canvasId?: string;
@@ -152,12 +151,11 @@ export class TerminalAgentsPanel {
       this.#page = Math.min(this.#page, Math.max(0, Math.ceil(total / PAGE_SIZE) - 1));
       const entries = this.agents.list(canvasId, read, PAGE_SIZE, this.#page * PAGE_SIZE);
       this.#entries = entries;
-      panel.actionPlacement = undefined;
+      panel.actionPlacement = 'dialog-footer';
       panel.scrollArea = undefined;
       panel.items = entries.map((entry) => `${entry.name} · ${activityAction(entry, t)}`);
       panel.itemHints = entries.map((entry) => activityTime(entry.updatedAt, t));
       panel.onPick = (index) => this.#openDetails(index);
-      // Capture this exact list revision, not a newer database snapshot at close time.
       panel.onItemsRendered = read
         ? undefined
         : (start, end) => this.#recordRendered(entries.slice(start, end));
@@ -166,17 +164,22 @@ export class TerminalAgentsPanel {
       panel.error = this.agents.error
         ? t('Activity history unavailable. Restart CharDesk to retry.')
         : undefined;
-      panel.status =
+      panel.status = undefined;
+      panel.footerStatus =
         total > PAGE_SIZE
           ? t`${this.#page * PAGE_SIZE + 1}–${this.#page * PAGE_SIZE + entries.length} of ${total} activities`
           : undefined;
-      panel.actions =
-        total > PAGE_SIZE
+      panel.actions = [
+        ...(!read && total > 0
           ? [
-              { id: 'agent-previous', label: t('Previous'), onPick: () => this.#turnPage(-1) },
-              { id: 'agent-next', label: t('Next'), onPick: () => this.#turnPage(1) },
+              {
+                id: 'agent-read-all',
+                label: t('Read all'),
+                onPick: () => this.#markAllRead(),
+              },
             ]
-          : undefined;
+          : []),
+      ];
       panel.hint = t('Tab view · Enter details · ↑↓ browse · ←→ page · Esc close');
     }
     this.surface.requestRender();
@@ -197,6 +200,7 @@ export class TerminalAgentsPanel {
     panel.emptyMessage = undefined;
     panel.error = undefined;
     panel.status = undefined;
+    panel.footerStatus = undefined;
     panel.actions = [
       {
         id: 'agent-copy-setup',
@@ -226,6 +230,7 @@ export class TerminalAgentsPanel {
       panel = this.#panel!,
       { t } = this.surface;
     panel.actionPlacement = undefined;
+    panel.footerStatus = undefined;
     panel.title = t('Call details');
     panel.tabs = undefined;
     panel.trailingTab = undefined;
@@ -296,6 +301,12 @@ export class TerminalAgentsPanel {
         if (current())
           this.surface.feedback.show(() => this.surface.messages.clipboardFailed, 'error');
       });
+  }
+  #markAllRead() {
+    const canvasId = this.currentCanvas();
+    if (!this.isOpen || this.#detail || this.#tab !== 0 || !canvasId) return;
+    if (!this.agents.markAllRead(canvasId))
+      this.surface.feedback.show(() => this.surface.t('Could not mark activity as read'), 'error');
   }
   #back() {
     const detail = this.#detail!;

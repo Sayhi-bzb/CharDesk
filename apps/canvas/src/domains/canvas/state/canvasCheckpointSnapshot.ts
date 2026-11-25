@@ -76,8 +76,6 @@ export const encodeCanvasCheckpointSnapshot = async (
 ): Promise<EncodedCanvasCheckpointSnapshot> => {
   const root = getCanvasDocumentRoot(doc);
   const pageIds = readCanvasPageOrder(root);
-  // Capture Yjs-owned collections before the first await. Encoding can then yield
-  // without mixing authority states from different revisions.
   const capturedPages = pageIds.flatMap((pageId): CapturedPage[] => {
     const page = readCanvasYPage(root, pageId);
     if (!page) return [];

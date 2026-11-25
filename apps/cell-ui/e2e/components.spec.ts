@@ -354,7 +354,6 @@ test("keyboard focus reveals navigation links in a short viewport", async ({ pag
   const nav = page.getByRole("navigation", { name: "Cell UI" });
   const links = nav.getByRole("link");
   if (browserName === "webkit") {
-    // WebKit's default Tab policy skips links; explicit focus still exercises reveal.
     await links.last().focus();
   } else {
     await links.first().focus();

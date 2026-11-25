@@ -48,7 +48,6 @@ function createStore(profile: CharDeskFontProfile, fontSize: number) {
     const font = getCharDeskCanvasFont(snapshot.metrics, 1, {
       fontFamily: face.family, fontSizeScale: face.fontSizeScale,
     });
-    // No faces is valid for system fonts; network/load failures must reject.
     await document.fonts?.load(font, "0Mg");
     loaded = true;
     publishReady();
@@ -59,7 +58,6 @@ function createStore(profile: CharDeskFontProfile, fontSize: number) {
     subscribe: (listener: () => void) => {
       if (listeners.size === 0) {
         document.fonts?.addEventListener("loadingdone", retryPendingLoad);
-        // A face may have loaded while no Surface was subscribed.
         if (!snapshot.ready) void load().catch(() => undefined);
       }
       listeners.add(listener);
@@ -80,7 +78,6 @@ const getStore = (profile: CharDeskFontProfile, fontSize: number) => {
   return store;
 };
 
-/** Preload a display face before committing a font switch. Grid geometry stays fixed. */
 export const loadCellFontMetrics = async (
   profile: CharDeskFontProfile,
   fontSize = DEFAULT_CELL_UI_METRICS.fontSize

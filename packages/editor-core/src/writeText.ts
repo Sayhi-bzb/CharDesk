@@ -79,9 +79,6 @@ const finishImpactBounds = (
         ],
 });
 
-/** Summarize prior logical Cell occupancy intersected by a patch. Category
- * counts may overlap; they are not a net-change signal. Checkpoint receipts
- * determine whether a document mutation was committed. */
 export const measureCanvasMutationImpact = (
   surface: CanvasSurfaceReader,
   patch: CellPlanePatch,
@@ -96,7 +93,6 @@ export const measureCanvasMutationImpact = (
     visitor: (x: number, cell: GridCell) => void,
   ) => {
     if (!content || y < content.y || y >= content.y + content.height) return;
-    // A wide glyph may be anchored one column before the requested interval.
     const left = Math.max(from - 1, content.x);
     const right = Math.min(to, content.x + content.width - 1);
     if (right < left) return;
@@ -142,7 +138,6 @@ export const measureCanvasMutationImpact = (
   };
 };
 
-/** Prepare all rows before committing; coordinates are original Cell coordinates. */
 export const prepareCanvasTextWrite = (
   at: Point,
   content: string,
@@ -181,7 +176,6 @@ export const prepareCanvasTextWrite = (
   );
 };
 
-/** Prepare a literal Projection stroke. Unstyled whitespace is transparent. */
 export const prepareCanvasPlainTextWrite = (
   at: Point,
   content: string,
@@ -257,7 +251,6 @@ export const prepareCanvasErase = (
   };
 };
 
-/** Translate rendered spans without coupling the Cell write port to a renderer. */
 export const prepareCanvasRowsWrite = (
   at: Point,
   source: readonly RichTextRow[],

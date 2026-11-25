@@ -28,7 +28,6 @@ export type TerminalClipboardAccess = ClipboardPort & {
 };
 export type TerminalClipboardPort = TerminalClipboardAccess & { dispose(): Promise<void> };
 
-/** Remote reads use terminal paste events, never the server's native clipboard. */
 export function adaptTerminalClipboard(
   service: ClipboardService,
   remote: () => boolean,
@@ -65,9 +64,7 @@ export function adaptTerminalClipboard(
           if (!canUseRich()) return { error: 'unsupported-data' };
           const parsed = parseRichClipboardHtml(richBackend.getHtml());
           if (parsed) return parsed;
-        } catch {
-          /* Unsupported formats/backend retain the host text path. */
-        }
+        } catch { /* empty */ }
       }
       if (disposed || remote()) return { error: 'unsupported-data' };
       try {
@@ -90,9 +87,7 @@ export function adaptTerminalClipboard(
             richBackend.setContents({ text: payload.plain, html });
             return { status: 'written' };
           }
-        } catch {
-          /* Explicit plain fallback below, never sequential format writes. */
-        }
+        } catch { /* empty */ }
       }
       if (disposed) return { status: 'unavailable' };
       const fallback = options.rich && payload.rich ? { warning: 'plain-fallback' as const } : {};
@@ -127,7 +122,6 @@ export function createTerminalClipboardPort(
     createClipboard({ host: createHostClipboard(), terminal }),
     () => terminal.remote,
     {
-      // OSC 52 transports text; remote and WSL must not write a server/X11 clipboard.
       supported: () => !process.env.WSL_DISTRO_NAME && !process.env.WSL_INTEROP,
       load: async () => {
         const { Clipboard } = await import('@napi-rs/clipboard');

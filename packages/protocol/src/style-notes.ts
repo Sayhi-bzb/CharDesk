@@ -50,7 +50,6 @@ const styleRegions = (cells: readonly CharDeskStyleNoteCell[]) => {
   return [...grouped.values()].flat().sort((a, b) => a.y - b.y || a.x - b.x || a.endY - b.endY || a.width - b.width);
 };
 
-/** Coordinates are inclusive Cell ranges in the caller's coordinate space. */
 export const formatCharDeskStyleNotes = (
   cells: readonly CharDeskStyleNoteCell[],
   options: { coordinates?: "compact" | "explicit"; truncationHint?: string; defaultForeground?: string } = {},

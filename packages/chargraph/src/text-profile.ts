@@ -46,7 +46,6 @@ export function createDefaultTextFeatureSettings(): CharDeskTextFeatureSettings 
   );
 }
 
-/** Current schema validation shared by all hosts. Host adapters own legacy storage migrations. */
 export function normalizeCharDeskTextRenderProfile(value: unknown): CharDeskTextRenderProfile {
   const source = object(value),
     themes = object(source.renderThemes),

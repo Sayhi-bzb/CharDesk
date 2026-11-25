@@ -6,7 +6,6 @@ import {
 } from '../../canvas-capabilities/src/readImage';
 import { resolveSnapshotFont } from './rasterFonts';
 
-/** Native PNG encoding only; capture, budgets and drawing are shared with Web. */
 export const renderLocalReadImage: CanvasReadImageRenderer = async (plan) => {
   const canvas = createCanvas(plan.width, plan.height);
   paintCanvasReadImage(canvas.getContext('2d'), plan, {

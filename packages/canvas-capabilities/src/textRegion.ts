@@ -10,7 +10,6 @@ export const isCanvasCellOccupied = (cell: GridCell) =>
   cell.attrs?.underline === true ||
   cell.attrs?.strike === true;
 
-/** Exact Cell clipping, independent of rulers, borders, and style-note formatting. */
 export const readCanvasTextRegion = (surface: CanvasSurfaceReader, bounds: NodeBounds) => {
   const text = Array.from({ length: bounds.height }, () => Array<string>(bounds.width).fill(' '));
   const cells: CharDeskStyleNoteCell[] = [];

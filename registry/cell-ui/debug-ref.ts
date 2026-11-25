@@ -15,7 +15,6 @@ const hashReference = (value: string): string => {
   return (hash >>> 0).toString(36).padStart(7, "0").slice(-7);
 };
 
-/** Maps a canonical widget id to a stable, intent-preserving agent ref. */
 export const cellDebugReference = (canonicalId: WidgetId): CellDebugReference => {
   const path = canonicalId.split("/");
   const root = path.shift() || canonicalId;
@@ -25,9 +24,6 @@ export const cellDebugReference = (canonicalId: WidgetId): CellDebugReference =>
   const intent = (ccMatch?.[1]
     ?? suffixedMatch?.[1]
     ?? root.replace(/\[\d+\]$/, "")) || "cell";
-  // Keep an already-short stable suffix (for example abc123), and hash only
-  // opaque or long entity ids. This gives agents a readable intent while
-  // keeping refs deterministic across frames.
   const rawEntity = ccMatch?.[2] ?? suffixedMatch?.[2];
   const entity = structuralPath
     ? hashReference(canonicalId)

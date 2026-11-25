@@ -13,7 +13,6 @@ type State = {
   scroll: number;
 };
 type Line = (text: string, x: number, y: number, fg: RGBA, bg: RGBA, width: number) => void;
-/** Ephemeral Host overlay; every action is rechecked and executed by the command registry. */
 export class TerminalContextMenu {
   #state: State | null = null;
   #closingKey: string | null = null;

@@ -23,7 +23,6 @@ export type CharDeskContentThemeToken =
 export type CharDeskContentTheme = Record<CharDeskContentThemeToken, string>;
 export type CharDeskContentThemeMode = "light" | "dark";
 
-/** Theme input accepted from current callers and profiles saved before muted split. */
 export type CharDeskContentThemeInput = Partial<CharDeskContentTheme> & {
   readonly muted?: string;
 };

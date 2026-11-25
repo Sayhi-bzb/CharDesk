@@ -41,7 +41,6 @@ export function evaluateReadingBudget({ index, pages, cases, baseline, countToke
     }
     const before = baseline.tasks.find(row => row.id === task.id);
     if (!before || before.page !== task.page) throw new Error(`Task baseline drift: ${task.id}`);
-    // Charge every opened page, including catalogs; navigation is not free.
     const tokens = countTokens([index, ...texts].join('\n\n'));
     return { id: task.id, page: task.page, hops: selected.length, before: before.tokens, after: tokens };
   });

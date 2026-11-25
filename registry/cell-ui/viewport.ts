@@ -12,7 +12,6 @@ export type CellAutoScrollRequest = Readonly<{
   direction: "negative" | "positive";
   velocity: number;
   pointer: CellPoint;
-  /** Signed Cell velocities; preserves both directions at corners. */
   velocityX?: number;
   velocityY?: number;
 }>;
@@ -43,7 +42,6 @@ export const cellPointToViewport = (state: CellViewportState, point: CellPoint):
   y: Math.round((point.y - state.viewport.y) * state.zoom) - state.scrollY,
 });
 
-/** Edge requests are scoped to a Cell viewport; the host owns scroll state. */
 export const cellAutoScrollRequest = (viewport: CellRect, pointer: CellPoint, edge = 3): CellAutoScrollRequest | null => {
   if (!(viewport.width > 0) || !(viewport.height > 0) || !(edge > 0)) return null;
   const speed = (point: number, start: number, extent: number): number => {

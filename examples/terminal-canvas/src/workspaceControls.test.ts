@@ -304,7 +304,7 @@ test('find supports Unicode, regex and paging; navigation preserves selection an
     f.setup.mockInput.pressKey(KeyCodes.F8);
     f.primary('a');
     await f.setup.mockInput.typeText('needle', 0);
-    f.setup.mockInput.pressKey(KeyCodes.F10); // back to literal
+    f.setup.mockInput.pressKey(KeyCodes.F10);
     expect(f.surface.panel?.items).toHaveLength(21);
     for (let i = 0; i < 20; i++) f.setup.mockInput.pressArrow('down');
     f.setup.mockInput.pressEnter();
@@ -731,7 +731,6 @@ test.each(['darwin', 'win32'] as const)(
       expect(model.plane.materialize()).toEqual(original);
       f.escape();
       await f.setup.mockMouse.release(x + 6, y);
-      // A fresh frame restores the hit map before starting the next native gesture.
       await f.setup.renderOnce();
       expect(model.plane.materialize()).toEqual(original);
       expect(model.canUndo).toBe(false);

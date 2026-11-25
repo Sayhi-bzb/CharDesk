@@ -74,7 +74,6 @@ for (const interruption of ['switch', 'settings', 'menu', 'detach'] as const) {
       const pending = model.commands.pasteProvided('slow');
       if (pending.status !== 'pending') throw new Error(`Expected pending, got ${pending.status}`);
       if (interruption === 'switch') {
-        // Exercise the host command, including its document-change observers.
         model.editor.commands.execute('terminal.next-document', undefined, 'test');
         expect(workspace.active).toBe(workspace.files[1]!);
       } else if (interruption === 'settings') {

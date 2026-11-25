@@ -45,7 +45,6 @@ export class BridgeRequests {
       this.#callers.set(clientId, count + 1);
       signal.addEventListener('abort', abort, { once: true });
       this.onChange();
-      // Observe dispatch failures immediately, including failures during sourceRef I/O.
       Promise.resolve().then(() => dispatch(entry)).catch((error) => entry.finish(error));
     });
   }

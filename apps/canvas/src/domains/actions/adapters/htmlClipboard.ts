@@ -7,7 +7,6 @@ const whitespace = /\s/u;
 const horizontalWhitespace = /[^\S\r\n]/u;
 const headingRoles = ["heading-1", "heading-2", "heading-3", "heading-4"] as const;
 
-/** Plain text owns characters and spacing; detached HTML only annotates matching text. */
 export function readHtmlClipboard(html: string, plainText: string): {
   source: string;
   spans: CharDeskSemanticSpan[] | null;
@@ -80,7 +79,6 @@ export function readHtmlClipboard(html: string, plainText: string): {
       if (whitespace.test(char)) continue;
       const beforeSpace = cursor;
       while (cursor < source.length && whitespace.test(source[cursor]!)) cursor++;
-      // Refuse a partial or guessed match; raw source remains intact on failure.
       if (!source.startsWith(char, cursor)) return { source, spans: null };
       from ??= leadingSpace && !source.slice(beforeSpace, cursor).includes("\n") ? beforeSpace : cursor;
       cursor += char.length;

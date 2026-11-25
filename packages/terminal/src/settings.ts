@@ -179,7 +179,6 @@ export function terminalSettingsPath(environment: NodeJS.ProcessEnv = process.en
   );
 }
 
-// Resolve existing ancestors too, since the preferences directory may not exist yet.
 async function settingsPath(input: string) {
   let path = resolve(input);
   const suffix: string[] = [];
@@ -194,7 +193,6 @@ async function settingsPath(input: string) {
   }
 }
 
-/** Host preferences are independent of documents and undo history. */
 export class TerminalSettingsStore {
   #values: TerminalSettings;
   #persisted: TerminalSettings;

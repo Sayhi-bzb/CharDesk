@@ -30,7 +30,6 @@ test("editor blur clears the full focus surface and caret but preserves logical 
   expect(blurred.focusedId).toBe(active.focusedId);
   expect(blurred.text).toBe(active.text);
   expect(await caretPixel()).not.toEqual(focusedPixel);
-  // Force a full Canvas presentation: it must match the blur's incremental erase.
   const erased = await canvas.evaluate((canvas) => canvas.toDataURL());
   await page.setViewportSize({ width: 1201, height: 900 });
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));

@@ -51,7 +51,6 @@ export function captureExportSnapshot(
   return { ...layout, entries };
 }
 
-/** Capture before awaiting Host IO; only physical selection coverage enters the image. */
 export function captureSelectionSnapshot(
   model: TerminalCanvas,
   source: CanvasSurfaceReader = model.plane

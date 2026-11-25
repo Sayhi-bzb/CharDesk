@@ -55,7 +55,6 @@ const materializationCache = new WeakMap<
   Map<CanvasTemplateId, CanvasTemplateMaterialization>
 >();
 
-/** Host resolves semantic colors; undefined background keeps the Host default. */
 export type CanvasTemplateColorResolver = (color: CanvasTemplateColor) => string | undefined;
 export const materializeCanvasTemplate = (
   id: CanvasTemplateId,

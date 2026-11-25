@@ -6,7 +6,6 @@ import type {
   EditorCommandResult,
 } from "@/domains/editor/public";
 
-// Editor Actions
 export type EditorActionId =
   | "undo"
   | "redo"
@@ -26,7 +25,6 @@ export type EditorActionId =
 
 export type EditorCommandId = EditorActionId;
 
-// Toolbar Actions
 export type ToolbarActionId =
   | "select"
   | "pan"
@@ -38,13 +36,11 @@ export type ToolbarActionId =
   | "eraser"
   | "undo";
 
-// Sidebar Actions
 export type SidebarActionId =
   | "toggle-grid"
   | "toggle-sidebar"
   | "open-source-code";
 
-// Unified Action ID
 export type ActionId = EditorActionId | ToolbarActionId | SidebarActionId;
 
 export type ShortcutToken = string;
@@ -61,7 +57,6 @@ export interface ActionMeta<Id extends ActionId = ActionId> {
   destructive?: boolean;
 }
 
-// Action Source
 export type ActionSource =
   | "keyboard"
   | "toolbar"
@@ -76,7 +71,6 @@ export type ActionCompletion = EditorCommandCompletion;
 
 export type ActionResult = EditorCommandResult;
 
-// Action Context
 export interface ActionContext {
   state: CanvasState;
   canvas: Pick<CanvasRuntime, "commands" | "queries" | "getState">;
@@ -85,16 +79,13 @@ export interface ActionContext {
   onRedo: () => void;
 }
 
-// Action Handler
 export type ActionHandler<T = unknown> = (
   options: T,
   context: ActionContext
 ) => ActionResult;
 
-// Action Checker
 export type ActionChecker = (state: CanvasState) => boolean;
 
-// Context Menu Entry
 export type ContextMenuEntry =
   | { type: "action"; id: EditorActionId }
   | { type: "separator" }

@@ -18,9 +18,7 @@ export async function githubStarsResponse(env: StarEnvironment): Promise<Respons
   try {
     const stored = await env.GITHUB_STARS?.get(GITHUB_STARS_KEY);
     snapshot = stored ? parseStarSnapshot(JSON.parse(stored) as unknown) : null;
-  } catch {
-    // Missing or unavailable KV should not break the host page.
-  }
+  } catch { /* empty */ }
   return Response.json(snapshot ?? { error: "unavailable" }, {
     status: snapshot ? 200 : 503,
     headers: { "Cache-Control": "public, max-age=60" },

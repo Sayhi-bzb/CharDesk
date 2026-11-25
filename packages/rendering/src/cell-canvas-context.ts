@@ -1,6 +1,5 @@
 import type { AxisTransform } from './canvas-geometry.js';
 
-/** Drawing subset shared by browser Canvas and native raster Hosts. */
 export interface CharDeskCellCanvasContext {
   fillStyle: unknown;
   strokeStyle: unknown;

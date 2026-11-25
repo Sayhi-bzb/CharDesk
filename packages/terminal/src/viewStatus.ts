@@ -21,7 +21,6 @@ export type TerminalViewStatusControl = {
   onPick?: () => void;
 };
 
-/** View-owned entries, independent of document selection and editing commands. */
 export class TerminalViewStatus {
   #items = new Map<string, TerminalViewStatusItem>();
   constructor(private invalidate: () => void) {}

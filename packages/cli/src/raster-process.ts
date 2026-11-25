@@ -56,9 +56,7 @@ const runRasterProcess = (
     let envelope: RasterEnvelope | undefined;
     try {
       envelope = deserialize(Buffer.concat(stdout)) as RasterEnvelope;
-    } catch {
-      // A native backend can exit without producing a protocol envelope.
-    }
+    } catch { /* empty */ }
     if (envelope?.ok) {
       resolve(envelope.result);
       return;

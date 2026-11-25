@@ -15,7 +15,6 @@ type SerializedContent = { source: string; semanticId: SemanticContentId };
 export type SerializationReply = { id: number } & (SerializedContent | { error: string });
 export type DocumentTextSnapshot = ContentProof & SerializedContent & { contentVersion: ContentVersion };
 
-/** One workspace owns one lazy worker and shares its immutable captures between save and recovery. */
 export class DocumentSerializer {
   #worker: Worker | null = null;
   #disposed = false;
@@ -43,7 +42,6 @@ export class DocumentSerializer {
     ]);
     const cached = this.#cache.get(document);
     if (cached?.key === key) return cached.snapshot;
-    // Yjs encodes the stored span operations, without expanding them to individual cells on the UI thread.
     const update = Y.encodeStateAsUpdate(document);
     const snapshot = this.#serialize(address.documentId, title, update).then((content) => ({
       ...proof,

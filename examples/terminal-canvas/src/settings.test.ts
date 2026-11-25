@@ -116,7 +116,6 @@ test('settings use an absolute XDG directory and validate in-memory values', () 
   expect(terminalSettingsPath({ XDG_CONFIG_HOME: 'relative' })).not.toContain('relative');
   const store = new TerminalSettingsStore();
   expect(store.status).toBe('session');
-  // Runtime validation also protects callers outside TypeScript.
   expect(() => store.set('panStep', 1 as 10)).toThrow('Invalid setting');
   expect(store.values.panStep).toBe(10);
 });

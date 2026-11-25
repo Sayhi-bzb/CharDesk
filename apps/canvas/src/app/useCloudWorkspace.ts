@@ -76,7 +76,7 @@ export function useCloudWorkspace() {
       setLimits((current) => current && { ...current, usedBytes: current.usedBytes + (work.contentBytes ?? 0) });
       if (user && sessionId && work.revision) {
         try { await bindCloudSession(user.id, sessionId, work.id, work.revision, title, content); }
-        catch { /* The saved backup remains available even if this browser cannot store its sync binding. */ }
+        catch { /* empty */ }
       }
     }),
     rename: (work: CloudWork, title: string) => run(async () => {

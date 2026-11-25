@@ -1,4 +1,3 @@
-/** Distribution-owned service; the terminal only presents its state. */
 export type UpdateState = {
   current: string;
   phase: 'idle' | 'checking' | 'current' | 'available' | 'error' | 'development';

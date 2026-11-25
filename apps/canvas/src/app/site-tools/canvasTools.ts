@@ -44,9 +44,6 @@ const mutationChanged = (result: { writtenCells?: number } | null | undefined, i
 
 const impactOutput = (impact: CanvasMutationImpact) => ({ impact });
 
-/** Store the active theme's foreground as Canvas' canonical default. This
- * keeps renderer-generated default text adaptive when the host switches theme;
- * authored colors remain explicit. */
 const canonicalizeDefaultForeground = <T extends { kind: string }>(
   rendered: T,
   themeMode: "light" | "dark",
@@ -85,10 +82,6 @@ const confirmCanvasPersistence = async (canvas: CanvasPersistenceHost, canvasId:
     await canvas.flushPersistence(canvasId);
     return { persisted: true, persistence: "saved" };
   } catch (error) {
-    // Projection mutations are already applied at this point. Report the
-    // durability state separately so Code Mode can return its operationId
-    // instead of converting a persistence delay into a misleading execution
-    // timeout or rolling back a valid projection edit.
     return {
       persisted: false,
       persistence: error instanceof CanvasPersistenceTimeoutError ? "pending" : "failed",
@@ -542,9 +535,6 @@ export const createCanvasRenderTool = (
   },
 });
 
-/** Render and prepare a write without mutating the Canvas document. Used by
- * Canvas Code preview so it shares the exact renderer and Cell placement rules
- * with the real write path. */
 export const createCanvasPreviewRenderTool = (
   canvas: Pick<CanvasRuntime, "ready" | "getState">,
   rendering: CanvasToolRendering,

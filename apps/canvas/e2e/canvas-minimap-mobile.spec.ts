@@ -44,7 +44,6 @@ for (const width of [320, 390]) {
     expect(mapBox!.x + mapBox!.width).toBeLessThanOrEqual(width);
     expect(mapBox!.y + mapBox!.height).toBeLessThan(dockBox!.y);
 
-    // Stay inside the letterboxed content, below the initial viewport.
     await minimap.tap({ position: { x: 110, y: 105 } });
     await expect.poll(() => marker.evaluate((node) => node.getBoundingClientRect().y))
       .toBeLessThan(initialMarkerY - 50);

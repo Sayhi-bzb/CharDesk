@@ -13,7 +13,6 @@ const execute = promisify(execFile);
 const upgradeBlocked = () => new BridgeError('bridge_upgrade_blocked',
   'Cannot safely retire the old Local MCP bridge. Stop it manually, then retry with the updated MCP package.');
 
-// Published releases use stable versions. Unknown version formats never authorize a takeover.
 export function needsUpgrade({ health, pairing, legacy }) {
   if (legacy || health.state === 'stopping') return true;
   const installed = /^(\d+)\.(\d+)\.(\d+)$/.exec(MCP_VERSION)?.slice(1).map(Number);
@@ -35,7 +34,6 @@ async function legacyIdentity(pid, port, signal) {
   const options = { timeout: 750, signal, maxBuffer: 64 * 1024 };
   const { stdout: identity } = await execute('ps', ['-p', String(pid), '-o', 'uid=', '-o', 'lstart=', '-o', 'comm='], options);
   const fields = identity.trim().split(/\s+/);
-  // Linux comm is a mutable thread name, not the executable identity.
   const executable = process.platform === 'linux' ? await readlink(`/proc/${pid}/exe`) : fields.slice(6).join(' ');
   if (Number(fields[0]) !== process.getuid() || !['node', 'nodejs'].includes(basename(executable))) throw upgradeBlocked();
   const { stdout: listener } = await execute(process.platform === 'darwin' ? '/usr/sbin/lsof' : 'lsof',
@@ -86,16 +84,12 @@ async function stopLegacy(broker, config, signal) {
     const temporary = `${marker}.${randomUUID()}.tmp`;
     let claimed = false;
     try {
-      // A complete, process-specific claim makes SIGTERM single-shot even when
-      // multiple adapters upgrade together or the first upgrader is cancelled.
       if (signal?.aborted) throw cancelled();
       await writeFile(temporary, JSON.stringify({ pid: process.pid }), { mode: 0o600 });
       try { await link(temporary, marker); claimed = true; }
       catch (error) { if (error.code !== 'EEXIST') throw error; }
     } finally { await unlink(temporary).catch(() => {}); }
     if (claimed) process.kill(pid, 'SIGTERM');
-    // Legacy cleanup runs after releasing the port. Wait for process exit before
-    // publishing a replacement record, so it cannot remove the new metadata.
     const deadline = Date.now() + 2000;
     while (Date.now() < deadline) {
       try { process.kill(pid, 0); }
@@ -111,7 +105,6 @@ async function stopLegacy(broker, config, signal) {
     if (signal?.aborted) throw cancelled();
     if (error.code === 'bridge_upgrade_failed') throw error;
     if (error.code === 'ESRCH' || error.code === 'ENOENT') {
-      // A concurrent upgrader may already have retired this exact process.
       try { process.kill(broker.pairing.pid, 0); }
       catch (gone) { if (gone.code === 'ESRCH') return; }
     }
@@ -127,7 +120,7 @@ export async function stopBroker(broker, config, signal) {
     const response = await requestJson(`${broker.baseUrl}/shutdown`, {
       method: 'POST', headers: { ...broker.headers, 'x-chardesk-instance-id': broker.health.instanceId }, signal,
     });
-    if (response.status === 409) return; // Another adapter already replaced this instance.
+    if (response.status === 409) return;
     if (response.status !== 202) throw upgradeBlocked();
   } catch (error) {
     if (signal?.aborted) throw cancelled();

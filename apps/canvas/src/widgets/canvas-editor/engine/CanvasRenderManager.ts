@@ -20,7 +20,6 @@ const inputsChanged = (
   previous.length !== next.length ||
   next.some((input, index) => input !== previous[index]);
 
-/** Tracks layer dependencies; inputs become current only after their layer is drawn. */
 export class CanvasRenderManager {
   private readonly committedInputs = new Map<CanvasRenderLayer, readonly unknown[]>();
   private pendingInputs: Record<CanvasRenderLayer, readonly unknown[]> | null = null;

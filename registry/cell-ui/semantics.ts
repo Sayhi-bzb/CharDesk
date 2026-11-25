@@ -126,7 +126,6 @@ const semanticRole = (node: WidgetNode): SemanticNode["role"] | null => {
 
 const selectable = (node: WidgetNode) => isSelectableKind(node.kind);
 
-/** Resolve semantic dependencies without making the renderer know widget-specific relations. */
 export const affectedSemanticIds = (tree: WidgetTree, ids: ReadonlySet<WidgetId>): Set<WidgetId> => {
   const affected = new Set(ids);
   const queue = [...ids];
@@ -336,7 +335,6 @@ export const createSemanticSnapshot = (
   focusedId: WidgetId | null,
 ): SemanticSnapshot => buildSemanticSnapshot(tree, scene, revision, focusedId);
 
-/** Preserve unaffected semantic nodes while rebuilding changed labels, bounds, and actions. */
 export const updateSemanticSnapshotForChanges = (
   previous: SemanticSnapshot,
   tree: WidgetTree,
@@ -346,7 +344,6 @@ export const updateSemanticSnapshotForChanges = (
   affectedIds: ReadonlySet<WidgetId>,
 ): SemanticSnapshot => buildSemanticSnapshot(tree, scene, revision, focusedId, { previous, affectedIds });
 
-/** Scroll-only frames preserve semantic content and order; only scene bounds can move. */
 export const updateSemanticSnapshotForScroll = (
   previous: SemanticSnapshot,
   scene: SceneSnapshot,

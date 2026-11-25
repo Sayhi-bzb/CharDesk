@@ -222,8 +222,6 @@ export const resolveWidgetVisual = (tree: WidgetTree, node: WidgetNode, theme: C
       : null;
     return finish(resolvePrimitiveAppearance({ ...semanticBase, ...node.textStyle, ...markdownStyle }, {
       ...projection,
-      // Icon-only toggles have no status glyph. Their persistent pressed state
-      // therefore needs to be represented by the control surface itself.
       pressed: projection.pressed || (owner?.kind === "toggle" && owner.content === "icon-only" && owner.pressed),
     }, theme, explicitHoverStyle));
   }

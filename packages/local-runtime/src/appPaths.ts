@@ -3,7 +3,6 @@ import { posix, win32 } from 'node:path';
 import { mkdir, realpath } from 'node:fs/promises';
 
 export type AppPaths = ReturnType<typeof resolveAppPaths>;
-/** Pure path policy: read-only commands never create a user directory. */
 export function resolveAppPaths({
   environment = process.env,
   platform = process.platform,
@@ -60,7 +59,6 @@ export function resolveAppPaths({
   };
 }
 
-/** Only interactive startup calls this; canonical roots also protect internal files. */
 export async function initializeAppPaths(paths: AppPaths): Promise<AppPaths> {
   const directories = [paths.config, paths.data, paths.state, paths.cache];
   await Promise.all(directories.map((path) => mkdir(path, { recursive: true, mode: 0o700 })));

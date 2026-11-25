@@ -168,7 +168,6 @@ export const moveGridAddressToContentBoundary = (input: {
   const cursor = moveGridAddress(input.address, horizontalStep, step.y);
   if (!withinBounds(cursor)) return { ...input.address };
 
-  // Work follows occupied anchors, not the coordinate distance between sparse islands.
   const horizontal = step.x !== 0;
   const direction = horizontal ? step.x : step.y;
   const coordinate = horizontal ? cursor.x : cursor.y;

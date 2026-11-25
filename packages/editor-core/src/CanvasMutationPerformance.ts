@@ -58,7 +58,6 @@ const timingKeys = [
   'notifyMs',
 ] as const;
 
-/** Benchmark-only bounded samples for synchronous cell-plane mutations. */
 export class CanvasMutationPerformance {
   #enabled = false;
   readonly #samples: CanvasMutationTimingSample[] = [];

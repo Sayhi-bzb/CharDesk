@@ -100,8 +100,6 @@ const localToolContracts = [
   },
 ];
 
-// Exported separately so browser hosts can consume the exact same names,
-// descriptions, and input schemas without importing the MCP runtime.
 export { localToolContracts };
 
 export const tools = localToolContracts.map(({ readOnly, ...tool }) => ({

@@ -21,7 +21,6 @@ interface CanvasSessionDescriptorBase {
   migrationPending?: true;
   collaboration?: CollaborationDescriptor;
   collaborationRole?: "host" | "guest";
-  /** Ephemeral sessions are shipped demos and are never written to local storage. */
   storagePolicy?: CanvasStoragePolicy;
 }
 

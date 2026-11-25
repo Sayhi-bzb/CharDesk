@@ -1,4 +1,3 @@
-/** DOM presentation ownership; widget targets are resolved by the Scene. */
 export const CELL_SURFACE_GUARD_CELLS = 1;
 
 export class CellPresentationRegistry {
@@ -32,7 +31,6 @@ export class CellPresentationRegistry {
   acceptsPoint(x: number, y: number): boolean {
     const document = this.current?.ownerDocument;
     if (!document) return false;
-    // DOM test environments may lack hit testing; browsers must prove ownership.
     if (typeof document.elementFromPoint !== "function") return true;
     return this.owns(document.elementFromPoint(x, y));
   }

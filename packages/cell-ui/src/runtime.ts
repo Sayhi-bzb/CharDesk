@@ -292,7 +292,6 @@ export class CellUiRuntime {
     }
     const scrollCandidate = !!previous && !structuralDirty && !viewportDirty && !layoutDirty
       && !semanticsDirty && geometryDirty && scrollOnlyGeometry && scrollRoots.size === geometryIds.size;
-    // Reusing siblings only pays when a meaningful part of the scene stays untouched.
     const scrollAffectedIds = scrollCandidate
       ? scrollSubtreeIds(tree, scrollRoots, Math.floor(tree.nodes.size * 0.7)) : null;
     const incrementalScroll = !!scrollAffectedIds && !hasPortalNodes(tree);

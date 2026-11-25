@@ -9,7 +9,6 @@ export const openBrowserLink: OpenLink = (href, target) => {
 
 const LinkContext = createContext<OpenLink>(openBrowserLink);
 
-// Each host supplies its router; standalone consumers keep native navigation.
 export function DocumentationLinks({ onNavigate, children }: { onNavigate: OpenLink; children: ReactNode }) {
   return <LinkContext.Provider value={onNavigate}>{children}</LinkContext.Provider>;
 }

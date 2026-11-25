@@ -31,20 +31,20 @@ test('calls create separate unread records and completion updates the same recor
       readRevision: 1,
     });
     inbox.begin('canvas', identity, 'canvas_read')('failed');
-    expect(inbox.count('canvas')).toBe(2); // Same identity, two calls.
+    expect(inbox.count('canvas')).toBe(2);
     inbox.begin('other', identity, 'canvas_write')();
     expect(inbox.count('other')).toBe(1);
     const latest = inbox.list('canvas')[0]!;
     expect(latest.status).toBe('failed');
     inbox.markRead('other', [{ id: latest.id, revision: latest.revision }]);
-    expect(inbox.count('canvas')).toBe(2); // A receipt cannot acknowledge another Canvas.
+    expect(inbox.count('canvas')).toBe(2);
     inbox.markRead('canvas', [working, latest]);
-    expect(inbox.count('canvas')).toBe(1); // Old revision 1 cannot consume completion revision 2.
+    expect(inbox.count('canvas')).toBe(1);
     inbox.markRead('canvas', inbox.list('canvas'));
     expect(inbox.count('canvas')).toBe(0);
     expect(inbox.count('canvas', true)).toBe(2);
     now += 365 * 24 * 3600 * 1000;
-    expect(inbox.count('other')).toBe(1); // No inactivity expiration.
+    expect(inbox.count('other')).toBe(1);
   } finally {
     inbox.dispose();
   }
@@ -118,6 +118,28 @@ test('large inboxes have stable pages; read acknowledgments never drop unviewed 
     inbox.markRead('canvas', first.slice(0, 3));
     expect(inbox.count('canvas')).toBe(102);
     expect(inbox.count('canvas', true)).toBe(3);
+  } finally {
+    inbox.dispose();
+  }
+});
+
+test('read all acknowledges every existing page only on its canvas; later revisions remain unread', () => {
+  const inbox = open();
+  try {
+    for (let i = 0; i < 105; i++) inbox.begin('canvas', identity, 'canvas_read')();
+    const finish = inbox.begin('canvas', identity, 'canvas_code');
+    inbox.begin('other', identity, 'canvas_read')();
+    expect(inbox.markAllRead('canvas')).toBe(true);
+    expect(inbox.count('canvas')).toBe(0);
+    expect(inbox.count('canvas', true)).toBe(106);
+    expect(inbox.count('other')).toBe(1);
+    finish();
+    inbox.begin('canvas', identity, 'canvas_read')();
+    expect(inbox.count('canvas')).toBe(2);
+    expect(inbox.list('canvas').find((row) => row.operation === 'canvas_code')).toMatchObject({
+      revision: 2,
+      readRevision: 1,
+    });
   } finally {
     inbox.dispose();
   }

@@ -19,7 +19,6 @@ import {
 import { hasClipboardSource } from "@/domains/actions/adapters/clipboardActions";
 import type { TextAttributes } from "@/shared/types";
 
-// Options types for each action
 type UndoRedoOptions = {
   onUndo?: () => boolean | void;
   onRedo?: () => boolean | void;
@@ -44,7 +43,6 @@ const FORMAT_ATTRIBUTES: Record<FormatActionId, TextAttributeName> = {
   "format-inverse": "inverse",
 };
 
-// Check if action can run
 const canCopyOrCut = (state: CanvasState): boolean => {
   return hasClipboardSource(
     getGridSelectionRanges(getStaticGridSelection(state.interaction.staticGrid)),
@@ -94,7 +92,6 @@ const resolveClipboardAction = (
   );
 };
 
-// Editor action handlers
 export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
   undo: (options, context): ActionResult => {
     const opts = options as UndoRedoOptions;
@@ -233,7 +230,6 @@ export const editorHandlers: Record<EditorActionId, ActionHandler<unknown>> = {
     toggleTextAttribute(context, FORMAT_ATTRIBUTES["format-inverse"]),
 };
 
-// Editor action checkers
 export const editorCheckers: Partial<Record<EditorActionId, (state: CanvasState) => boolean>> = {
   undo: (state) => state.canUndo,
   redo: (state) => state.canRedo,

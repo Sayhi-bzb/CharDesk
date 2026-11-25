@@ -4,7 +4,6 @@ import type {
   StructuredTextStyleRange,
 } from "./types";
 
-/** Resolves the historical per-grapheme styling needed while flattening a scene. */
 export const mergeStructuredTextStyle = (
   baseStyle: StructuredNodeStyle,
   ranges: StructuredTextStyleRange[] | undefined,

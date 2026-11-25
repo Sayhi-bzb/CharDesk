@@ -1,7 +1,6 @@
 import { resolve } from 'node:path';
 import { atomicWrite } from '@chardesk/local-runtime/storage';
 
-/** Export creates a new file; document saves and their baselines remain independent. */
 export async function deliverExportFile(
   path: string,
   content: string | Uint8Array,

@@ -10,7 +10,6 @@ import type {
   AgentInvocationDetails,
 } from './agents.ts';
 
-/** Local call history, independent of Canvas content and undo. */
 export class LocalAgentInboxStore implements AgentInboxStorage {
   readonly #db: Database;
   readonly #owner = randomUUID();
@@ -52,7 +51,6 @@ export class LocalAgentInboxStore implements AgentInboxStorage {
             .all();
         })
         .immediate();
-      // Other live runtimes share the journal; recover only owners whose process is gone.
       const owners = this.#db
         .query<{ owner: string; pid: number }, []>(
           "SELECT DISTINCT owner, pid FROM agent_activity WHERE status = 'working'"
@@ -148,6 +146,13 @@ export class LocalAgentInboxStore implements AgentInboxStorage {
             .run(revision, canvasId, id);
       })
       .immediate();
+  }
+  markAllRead(canvasId: string) {
+    this.#db
+      .query(
+        'UPDATE agent_activity SET readRevision = revision WHERE canvasId = ? AND readRevision < revision'
+      )
+      .run(canvasId);
   }
   #interrupt(owner: string) {
     this.#db

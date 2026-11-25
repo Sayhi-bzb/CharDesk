@@ -14,8 +14,6 @@ afterEach(() => {
   applyFreeformSnapshotToYMaps([]);
 });
 
-// The Web facade is a second Host oracle; each assertion includes a replayable
-// seed and command prefix so mismatches can be reduced to a regression case.
 test.each(Array.from({ length: 8 }, (_, i) => i + 1))(
   'cross-host command trace seed %i',
   (seed) => {

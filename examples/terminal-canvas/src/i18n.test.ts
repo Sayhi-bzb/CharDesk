@@ -159,7 +159,6 @@ test('Settings changes language immediately and keeps selection, document, tool 
     const button = f.surface.headerControls.find((control) => control.id === 'settings')!;
     await f.setup.mockMouse.click(button.x + button.width - 2, button.y);
     expect(f.surface.panel!.title).toBe('设置');
-    // Reopening starts at the first row; English is the next language choice.
     for (let i = 0; i < language; i++) f.setup.mockInput.pressArrow('down');
     f.setup.mockInput.pressEnter();
     await f.setup.renderOnce();

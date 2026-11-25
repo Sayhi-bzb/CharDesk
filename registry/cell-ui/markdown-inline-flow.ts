@@ -59,7 +59,6 @@ const unitsFor = (runs: readonly MarkdownInlineRun[]): Unit[] => {
   return units;
 };
 
-/** One line map is shared by measuring, painting, and Markdown link hit regions. */
 export const layoutMarkdownInlineFlow = (runs: readonly MarkdownInlineRun[], widthLimit: number): MarkdownInlineLayout => {
   const limit = Math.max(1, Math.floor(widthLimit));
   let widths = layoutCache.get(runs);

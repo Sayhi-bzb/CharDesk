@@ -37,7 +37,6 @@ export const highlightMarkdownCode = (
   const key = `${lang}\0${code}`;
   const cached = cache.get(key);
   if (cached) return cached;
-  // Shiki variables classify tokens; CellUiTheme resolves their colors at paint time.
   highlighter ??= createHighlighterCoreSync({
     themes: [createCssVariablesTheme({ name: "cell-code", variablePrefix: "--cell-code-" })],
     langs: [...tsx, ...json, ...bash],

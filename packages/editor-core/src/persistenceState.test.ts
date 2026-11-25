@@ -101,7 +101,6 @@ test('stale semantic completions cannot acknowledge newer content or a replaced 
   await vi.advanceTimersByTimeAsync(0);
   expect(changed).not.toHaveBeenCalled();
   expect(state.isDirty()).toBe(true);
-  // Latest comparison is scheduled even if no further input event arrives.
   await vi.advanceTimersByTimeAsync(100);
   expect(changed).toHaveBeenCalledTimes(1);
   expect(state.isDirty()).toBe(true);

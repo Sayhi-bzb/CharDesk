@@ -24,7 +24,6 @@ for (const scheme of ["light", "dark"] as const) {
       await page.mouse.click(point.x, point.y);
       await expect(input).toBeFocused();
       const bounds = (await canvas.boundingBox())!;
-      // No key event has occurred: TextArea keeps its border idle while its inner Cells activate.
       const assertActive = async () => {
         await expect.poll(async () => {
           const cells = (await readCellProbe(surface)).cells.filter((cell) => cell.ownerId === id);

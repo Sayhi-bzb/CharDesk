@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { cp, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-/** Package the existing Web font subsets; CSS remains the coverage/weight authority. */
 export async function prepareSnapshotFonts(root: string, destination: string) {
   const faces = [];
   await mkdir(destination, { recursive: true });

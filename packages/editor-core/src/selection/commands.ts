@@ -76,7 +76,6 @@ export function moveGridFocusToContentBoundary(
     : collapseGridSelectionTo(selection, target);
 }
 
-/** Pointer range endpoints identify grapheme anchors, including follower hits. */
 export function selectGridRangeAt(
   grid: GridCellSource,
   selection: GridSelectionState,
@@ -90,7 +89,6 @@ export function selectGridRangeAt(
   );
 }
 
-/** Keyboard extension moves the extent while keeping the active cell at its anchor. */
 export function moveGridFocus(
   grid: GridCellSource,
   selection: GridSelectionState,
@@ -105,7 +103,6 @@ export function moveGridFocus(
   return extend ? extendGridSelectionTo(selection, next) : collapseGridSelectionTo(selection, next);
 }
 
-/** Written bounds retain their full cell extent even when the last glyph is wide. */
 export function selectWrittenBounds(
   selection: GridSelectionState,
   bounds: { minX: number; minY: number; maxX: number; maxY: number }

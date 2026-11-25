@@ -9,7 +9,6 @@ const record = (value: unknown): value is Record<string, unknown> =>
 const safeString = (value: unknown, limit: number): value is string =>
   typeof value === 'string' && value.length <= limit && !/\p{Cc}/u.test(value);
 
-/** All hosts validate untrusted rich data before it reaches a write command. */
 export function parseRichClipboardText(
   raw: string
 ): { richCells: RichTextCell[]; plainText: string | null } | null {
@@ -73,7 +72,6 @@ export function parseRichClipboardText(
   }
 }
 
-/** HTML is a portable multi-format carrier; the visible representation stays plain text. */
 export function buildRichClipboardHtml(payload: ClipboardPayload) {
   if (!payload.rich || !parseRichClipboardText(payload.rich)) return null;
   const text = payload.plain

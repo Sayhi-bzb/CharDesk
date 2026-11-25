@@ -168,7 +168,7 @@ test('update status opens the shared settings dialog, copies the chosen command 
     const panel = f.surface.panel!;
     expect(panel).toMatchObject({ dialog: true, title: 'Settings', selectedTab: 5 });
     expect(panel.status).toContain('0.6.11');
-    panel.onPick!(2); // Choose the Bun installation method.
+    panel.onPick!(2);
     panel.onPick!(3);
     await Promise.resolve();
     expect(f.clipboardText).toBe('bun add -g @chardesk/cli@latest');
@@ -233,7 +233,7 @@ test('F1 and Ctrl+/ open view shortcuts across dialogs while Command+/ and quest
     f.surface.setTool('hand');
     f.setup.mockInput.pressKey('?');
     expect(f.surface.help).toBe(false);
-    f.setup.mockInput.pressKey('\x1b[47;5u'); // Ctrl+/ needs no Shift modifier.
+    f.setup.mockInput.pressKey('\x1b[47;5u');
     expect(f.surface.help).toBe(true);
     f.escape();
     f.surface.setTool('edit');
@@ -246,7 +246,7 @@ test('F1 and Ctrl+/ open view shortcuts across dialogs while Command+/ and quest
     f.setup.mockInput.pressKey('?');
     expect(f.surface.help).toBe(false);
     expect(f.surface.panel?.input).toBe('?');
-    f.setup.mockInput.pressKey('\x1b[47;9u'); // Command+/ stays with the terminal.
+    f.setup.mockInput.pressKey('\x1b[47;9u');
     expect(f.surface.help).toBe(false);
     expect(f.surface.panel?.title).toBe('Settings');
     f.setup.mockInput.pressKey('F1');
@@ -310,7 +310,7 @@ test('independent view contributors align, update and dispose without touching d
       text: 'agents: idle',
       align: 'right',
     });
-    old(); // A stale owner cannot remove the replacement contribution.
+    old();
     await f.setup.resize(32, 12);
     f.surface.settings.set('language', 'zh-CN');
     await f.setup.renderOnce();

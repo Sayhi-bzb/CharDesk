@@ -50,7 +50,6 @@ function readPalette(colors: TerminalColors): TerminalPaletteSnapshot | null {
   });
 }
 function contentTheme(palette: TerminalPaletteSnapshot | null): CharDeskContentTheme {
-  // The shared canonical foreground is an inheritance sentinel, not a Host RGB fallback.
   if (!palette)
     return Object.freeze(
       Object.fromEntries(
@@ -82,7 +81,6 @@ function contentTheme(palette: TerminalPaletteSnapshot | null): CharDeskContentT
   });
 }
 
-/** Host state only. Native references and RGB consumers share one versioned snapshot. */
 export class TerminalAppearanceRuntime {
   #snapshot!: TerminalAppearanceSnapshot;
   #signature = '';
@@ -199,7 +197,6 @@ export class TerminalAppearanceRuntime {
     });
     for (const listener of this.#listeners) listener();
   }
-  /** Palette events outside our own query also include same-mode theme changes. */
   acceptPalette(colors: TerminalColors, mode: 'light' | 'dark' | null) {
     if (this.#pending || this.#disposed) return;
     ++this.#generation;
@@ -243,7 +240,6 @@ export class TerminalAppearanceRuntime {
     this.#pending = pending;
     return this.capture();
   }
-  /** An operation captures once; later theme changes never recolor committed content. */
   async capture(): Promise<TerminalAppearanceSnapshot> {
     while (this.#pending) await this.#pending;
     return this.#snapshot;

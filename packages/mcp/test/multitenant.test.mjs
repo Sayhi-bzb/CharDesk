@@ -43,7 +43,6 @@ test('per-caller and global request budgets release immediately on cancellation'
   await Promise.all(pending);
   await waitFor(async () => (await f.health()).activeRequests === 0);
   assert.equal((await f.health()).activeCallers, 0);
-  // Late page replies must not recreate request records.
   for (const call of page.calls) page.respond(call, { ok: true });
   const recovered = read(f);
   await waitFor(() => page.calls.length === 129);

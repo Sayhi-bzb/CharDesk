@@ -6,7 +6,6 @@ import { createCharDeskMarkdownStyles } from "./markdown-theme.js";
 import { wrapMarkdownProse } from "./markdown-wrap.js";
 import { highlightCode } from "./code-highlighting.js";
 
-/** Non-overlapping UTF-16 ranges over literal source. Styles never insert or remove characters. */
 export type CharDeskSemanticSpan = {
   from: number;
   to: number;

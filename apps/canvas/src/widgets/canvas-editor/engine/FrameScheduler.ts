@@ -65,7 +65,6 @@ const getDefaultAnimationFramePort = (): AnimationFramePort => ({
   now: () => performance.now(),
 });
 
-/** Coalesces every canvas subsystem onto one browser animation frame. */
 export class CanvasFrameScheduler {
   private readonly port: AnimationFramePort;
   private readonly callbacks = new Map<string, CanvasFrameTask>();
@@ -207,7 +206,6 @@ export class CanvasFrameScheduler {
   }
 }
 
-/** Namespaces subsystem keys while keeping multiple canvas views on one RAF. */
 export class CanvasScopedFrameScheduler extends CanvasFrameScheduler {
   private readonly parent: CanvasFrameScheduler;
   private readonly scope: string;

@@ -95,7 +95,6 @@ const emitGlyphs = (glyphs: readonly Glyph[], output: CharGraphFragment[]) => {
   }
 };
 
-/** Wrap rendered prose without discarding inline styles, links, or source ranges. */
 export const wrapMarkdownProse = (
   fragments: readonly CharGraphFragment[],
   widthLimit: number

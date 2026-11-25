@@ -1,6 +1,5 @@
 import type { EditorFormFactor } from './types';
 
-/** Presentation only: never changes document capabilities or saved preferences. */
 export function resolveEditorHostPolicy(formFactor: EditorFormFactor) {
   const advanced = formFactor !== 'phone';
   return {

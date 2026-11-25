@@ -75,7 +75,6 @@ export type TerminalShortcut = { keys: readonly string[]; label: string; repeata
 import { messages } from './copy.ts';
 import type { TerminalInputPolicy } from './terminalPolicy.ts';
 
-/** Native labels and bindings come from the same per-Host platform policy. */
 export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: TerminalInputPolicy) {
   const mac = platform === 'darwin';
   const key = (keys: string[], label = keys.join(' / '), repeatable = false): TerminalShortcut => ({
@@ -112,7 +111,6 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     navigation: key(['Shift+F8']),
     'select-row': key(['Shift+Space']),
     'select-column': key(['Ctrl+Space']),
-    // Home remains Go to origin; every navigation action is available in the panel.
     'edge-left': key(['Ctrl+Home'], 'Ctrl+Home', true),
     'edge-right': key(['End'], 'End', true),
     'edge-start': key([], '—'),
@@ -146,8 +144,6 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     'format-underline': primary('U'),
     'format-strike': key(mac ? ['Meta+Shift+X'] : ['Ctrl+Shift+X']),
     'format-inverse': key([], messages.inspector),
-    // Ctrl+Y is Vibe's documented macOS copy fallback; it needs no Super encoding.
-    // Keep Command available when forwarded, but do not advertise it on Warp.
     copy: mac
       ? key(['Meta+C', 'Ctrl+Y'], policy?.terminal === 'warp' ? 'Ctrl+Y' : '⌘C / Ctrl+Y')
       : primary('C'),
@@ -170,7 +166,6 @@ export function createTerminalShortcuts(platform: NodeJS.Platform, policy?: Term
     anchors: key(['F9']),
     'add-anchor': key(['Shift+F9']),
     'close-document': primary('W'),
-    // Command+Q belongs to the terminal application on macOS.
     quit: key(['Ctrl+Q']),
     focus: key(['F5']),
     origin: key(['Home']),
@@ -184,7 +179,6 @@ export type TerminalShortcuts = ReturnType<typeof createTerminalShortcuts>;
 import type { EditorKeymapSnapshot } from '@chardesk/editor-core/editor/keymap';
 import { formatShortcutSequence } from '@chardesk/editor-core/editor/shortcut';
 
-/** Present the same effective catalog that the input engine consumes. */
 export function effectiveTerminalShortcuts(
   defaults: TerminalShortcuts,
   snapshot: EditorKeymapSnapshot,

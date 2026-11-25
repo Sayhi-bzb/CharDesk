@@ -827,7 +827,6 @@ describe("clipboardActions", () => {
   });
 });
 
-// Native terminal and browser copy use the same public portable carrier.
 it("accepts native HTML alongside plain text without compiling away styles and links", async () => {
   const cells = [
     {

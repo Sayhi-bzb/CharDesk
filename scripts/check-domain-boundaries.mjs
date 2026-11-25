@@ -236,7 +236,6 @@ function findDomainCycles(edges) {
 for (const cycle of findDomainCycles(domainEdges)) {
   violations.push(`domain cycle: ${cycle.join(" -> ")}`);
 }
-// Shared editor packages and the terminal Host must never import Web internals.
 for (const directory of [
   "packages/cell-plane/src",
   "packages/editor-core/src",

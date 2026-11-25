@@ -3,7 +3,6 @@ import { getGraphemeCellWidth as getCellOccupancy } from '@chardesk/protocol';
 
 const keyOf = (x: number, y: number) => `${x},${y}`;
 
-/** Point-based reader over an owned, immutable-by-convention grid snapshot. */
 export class GridSnapshotSource implements GridCellSource {
   readonly #grid: ReadonlyMap<string, GridCell>;
 
@@ -47,7 +46,6 @@ export class GridSnapshotSource implements GridCellSource {
   }
 }
 
-/** Adapts an owned grid snapshot to the shared point-based read contract. */
 export const createGridMapSource = (grid: ReadonlyMap<string, GridCell>): GridCellSource =>
   new GridSnapshotSource(grid);
 

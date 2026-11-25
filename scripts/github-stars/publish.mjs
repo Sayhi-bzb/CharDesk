@@ -1,5 +1,4 @@
 const githubUrl = "https://api.github.com/repos/Sayhi-bzb/CharDesk/stargazers/count";
-// The custom domain challenges GitHub-hosted runners; the Pages host exercises the same Function and KV binding.
 const cellUiStarsUrl = "https://chardesk-cell-ui.pages.dev/api/github-stars";
 const starKey = "github-stars";
 

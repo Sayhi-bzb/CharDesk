@@ -44,7 +44,6 @@ test('snapshot expands a follower selection to whole CJK/emoji without the range
     const pixel = (x: number, y: number) => [
       ...image.rgba.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4),
     ];
-    // Both physical columns contain glyph ink, rather than clipping a wide glyph at its anchor.
     for (const [start, end] of [
       [18, 36],
       [36, 54],
@@ -89,7 +88,7 @@ test('snapshot omits envelope holes and padding neighbors and captures styles be
     model.commands.insert('CHANGED');
     expect(captured.entries.map((entry) => entry.cell.text)).toEqual(['A', '界', 'A', 'B']);
     const image = renderSelectionSnapshot(captured, palette);
-    const offset = ((80 + 10) * image.width + 54 + 5) * 4; // lower envelope hole
+    const offset = ((80 + 10) * image.width + 54 + 5) * 4;
     expect([...image.rgba.subarray(offset, offset + 4)]).toEqual([34, 51, 68, 255]);
   } finally {
     model.dispose();

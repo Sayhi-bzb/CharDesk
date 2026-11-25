@@ -2,7 +2,6 @@ import type { ActivityRange } from './model';
 
 export type ActivityViewport = { left: number; top: number; right: number; bottom: number };
 
-/** A clipped Cell is not yet observed. Keep partial rows/columns pending. */
 export const visibleActivityRanges = (ranges: readonly ActivityRange[], viewport: ActivityViewport): ActivityRange[] =>
   ranges.flatMap((range) => {
     const from = Math.max(range.from, Math.ceil(viewport.left));
@@ -11,7 +10,6 @@ export const visibleActivityRanges = (ranges: readonly ActivityRange[], viewport
       ? [{ y: range.y, from, to }] : [];
   });
 
-/** Locate a real pending Cell, rather than the empty center of a sparse bounding box. */
 export function nextActivityTarget(ranges: readonly ActivityRange[], viewport: ActivityViewport) {
   const x = (viewport.left + viewport.right) / 2;
   const y = (viewport.top + viewport.bottom) / 2;

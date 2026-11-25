@@ -1,4 +1,3 @@
-// Isolated Host UI fixture: no Canvas document, transport, or agent execution.
 import '@vitejs/plugin-react-swc/preamble';
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';

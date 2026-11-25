@@ -10,7 +10,6 @@ const loaded = new Map<Face, string>();
 const resolved = new Map<string, string | undefined>();
 const directory = new URL('./snapshot-fonts/', import.meta.url);
 
-/** Native Canvas lacks CSS unicode-range selection; route each glyph to its Web subset. */
 export const resolveSnapshotFont: CharDeskCanvasFontResolver = ({ grapheme, bold }) => {
   const key = `${bold}:${grapheme}`;
   if (resolved.has(key)) return resolved.get(key);

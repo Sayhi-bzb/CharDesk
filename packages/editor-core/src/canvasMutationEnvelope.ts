@@ -3,7 +3,6 @@ import type { CellPlaneOperation } from '@chardesk/cell-plane';
 import type { CanvasAnchorChange } from './canvasAnchorModel.js';
 import type { CanvasPageDescriptor, CanvasPageDraft } from './canvasDocumentModel.js';
 
-/** Semantic mutation data; it deliberately contains no Yjs item identifiers. */
 export type CanvasMutationEnvelope =
   | {
       kind: 'anchors';

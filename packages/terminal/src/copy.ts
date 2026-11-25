@@ -52,7 +52,6 @@ export function rangeClickHint(policy: TerminalInputPolicy, t: Translate = engli
   if (policy.shiftClick === 'requested') return t('Drag to select · Shift+click extends');
 }
 
-/** Plain-text projection of the same grouped guide model. */
 export function helpLines(
   s: TerminalShortcuts,
   policy?: TerminalInputPolicy,

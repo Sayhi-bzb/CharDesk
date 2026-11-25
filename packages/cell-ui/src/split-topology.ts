@@ -56,9 +56,6 @@ export const resolveCellBoundaryTopology = (tree: WidgetTree, scene: SceneSnapsh
     const entry = scene.entries.get(id), node = tree.nodes.get(id);
     if (!entry || !node) continue;
     const vertical = node.orientation === "vertical", b = entry.layoutBounds;
-    // Open splitters do not own end caps. Junctions are emitted only when
-    // another real boundary segment (frame, separator, or splitter) meets
-    // the endpoint, so an open editor edge remains open.
     const candidates: Array<{ x: number; y: number }> = [];
     for (const other of segments) {
       if (other.ownerId === id || other.orientation === (vertical ? "vertical" : "horizontal")) continue;
@@ -75,8 +72,6 @@ export const resolveCellBoundaryTopology = (tree: WidgetTree, scene: SceneSnapsh
       const key = `${point.x}:${point.y}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      // At an internal crossing the horizontal splitter owns the tee. The
-      // vertical line remains a continuous `│` and must not be overwritten.
       if (vertical && segments.some((segment) => segment.orientation === "horizontal"
         && segment.priority !== 1 && segment.coordinate === point.y
         && segment.start === point.x + 1)) continue;
@@ -86,9 +81,6 @@ export const resolveCellBoundaryTopology = (tree: WidgetTree, scene: SceneSnapsh
         | (coversAny(segments, point.x + 1, point.y, "horizontal") ? 8 : 0);
       let glyph = glyphs[mask];
       let junction = point;
-      // Only a real bordered frame owns a left/right endpoint tee. Open
-      // splitter boundaries stay open; their internal vertical joins still
-      // resolve through the normal four-direction mask.
       const frameAtLeft = !vertical && point.x === b.x - 1 && segments.some((segment) =>
         segment.priority === 1 && segment.orientation === "vertical" && segment.coordinate === point.x
         && point.y >= segment.start && point.y <= segment.end);

@@ -11,7 +11,6 @@ type SelectableItemProps = React.ComponentProps<"button"> & {
   selected?: boolean
   muted?: boolean
   status?: StatusTone
-  /** The row owns the hover/active surface for nested action controls. */
   compound?: boolean
 }
 

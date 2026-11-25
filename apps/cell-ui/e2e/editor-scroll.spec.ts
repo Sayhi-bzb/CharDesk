@@ -30,7 +30,6 @@ test("TextArea shares draggable rails without stealing selection or scrolling th
   expect(await editor.evaluate((input) => [input.selectionStart, input.selectionEnd])).toEqual(selection);
   await expect(editor).toBeFocused();
   await expect(editor).toHaveValue(value);
-  // Scroll away from the caret; neither the hidden input nor a browser wheel may move the page.
   const pageY = await page.evaluate(() => scrollY);
   await page.mouse.move(bounds.x + 11 * cellWidth, bounds.y + (area.y + 3) * cellHeight);
   const revision = after.revision;

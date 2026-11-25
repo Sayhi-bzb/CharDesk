@@ -6,7 +6,6 @@ import { CanvasActivityStore, normalizeActivityRanges } from '@/shared/canvas-ac
 
 const agentScopes = new WeakMap<object, { depth: number }>();
 
-/** Attribution lasts only for the synchronous command, never across persistence/render awaits. */
 export function captureCanvasAgentMutation<T>(canvas: object, command: () => T): T {
   const scope = agentScopes.get(canvas);
   if (!scope) return command();
@@ -14,7 +13,6 @@ export function captureCanvasAgentMutation<T>(canvas: object, command: () => T):
   try { return command(); } finally { scope.depth -= 1; }
 }
 
-/** Host adapter: document facts invalidate activity regardless of which input produced them. */
 export function connectCanvasActivity(canvas: CanvasRuntime, store: CanvasActivityStore = canvasActivityStore) {
   const scope = { depth: 0 };
   agentScopes.set(canvas, scope);

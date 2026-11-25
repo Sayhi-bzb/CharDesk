@@ -68,9 +68,7 @@ const readProfile = (storage: TextRenderingStorage | false | undefined) => {
       ) {
         try {
           storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
-        } catch {
-          // Keep the migrated preference in memory when storage is read-only.
-        }
+        } catch { /* empty */ }
       }
       return profile;
     }
@@ -79,9 +77,7 @@ const readProfile = (storage: TextRenderingStorage | false | undefined) => {
       const migrated = decodeProfile(JSON.parse(v2Stored));
       try {
         storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(migrated));
-      } catch {
-        // Migration remains usable in memory when browser storage is read-only.
-      }
+      } catch { /* empty */ }
       return migrated;
     }
     const legacyStored = storage.getItem(LEGACY_TEXT_RENDER_PROFILE_STORAGE_KEY);
@@ -89,9 +85,7 @@ const readProfile = (storage: TextRenderingStorage | false | undefined) => {
     const migrated = migrateLegacyProfile(JSON.parse(legacyStored));
     try {
       storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(migrated));
-    } catch {
-      // Migration remains usable in memory when browser storage is read-only.
-    }
+    } catch { /* empty */ }
     return migrated;
   } catch {
     return DEFAULT_TEXT_RENDER_PROFILE;
@@ -152,9 +146,7 @@ export class TextRenderingRuntime {
     if (this.#storage) {
       try {
         this.#storage.setItem(TEXT_RENDER_PROFILE_STORAGE_KEY, JSON.stringify(this.#profile));
-      } catch {
-        // Keep the in-memory preference when browser storage is unavailable.
-      }
+      } catch { /* empty */ }
     }
     this.#listeners.forEach((listener) => listener());
   };

@@ -27,12 +27,10 @@ export type PreparedClipboardPaste = {
   diagnostics?: readonly { code: string; message: string }[];
   headings?: readonly { level: number; row: number; label: string }[];
 };
-/** Syntax preparation is asynchronous and independent of clipboard transport. */
 export type ClipboardTextPreparation = (
   text: string,
   state: ClipboardState
 ) => Promise<PreparedClipboardPaste>;
-/** A terminal dispatch is not an acknowledgement from the user's clipboard. */
 export type ClipboardWriteResult = {
   status: 'written' | 'dispatched' | 'unavailable' | 'failed';
   warning?: 'plain-fallback';
@@ -58,7 +56,6 @@ export type ClipboardMutationPort = {
   pasteRichData: (cells: RichTextCell[], at?: Point, options?: { selectResult?: boolean }) => void;
   pastePlainText: (text: string, color: string, selectResult: boolean) => boolean;
 };
-/** Shared across per-event Web adapters so newer mutations supersede older IO. */
 export class ClipboardRequestScope {
   #generation = 0;
   begin() {

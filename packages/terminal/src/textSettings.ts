@@ -9,7 +9,6 @@ import { MARKDOWN_WRAP_WIDTH_MIN, MARKDOWN_WRAP_WIDTH_MAX } from '@chardesk/char
 import type { CanvasSurface, TerminalPanel } from './surface.ts';
 
 type Stage = 'main' | 'width' | 'features' | 'feature-pick' | 'feature-slots' | 'tokens' | 'color';
-/** Rendering preferences over the same dialog shell and shared CharGraph profile. */
 export class TerminalTextSettings {
   #stage: Stage = 'main';
   #mode: CharDeskRenderThemeMode = 'light';

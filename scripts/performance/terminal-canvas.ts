@@ -111,7 +111,6 @@ async function renderWorker(config: Config) {
         begin = performance.now();
       await run(i);
       await setup.renderOnce();
-      // Includes native ANSI generation and drain to a nonblocking counting sink, not terminal display.
       clock.advance(0);
       await session.idle();
       times.push(performance.now() - begin);
@@ -185,7 +184,6 @@ async function renderWorker(config: Config) {
     const pasteText = Array.from({ length: 50 }, () => 'plain text'.repeat(20)).join('\n');
     await measure('paste10kCells', 1, async () => {
       await setup.mockInput.pasteBracketedText(pasteText);
-      // Paste completion runs on the shared command queue.
       for (let i = 0; i < 100 && model.plane.get({ x: 0, y: dataset.rows + 5 })?.char !== 'p'; i++)
         await tick();
       assert.equal(model.plane.get({ x: 0, y: dataset.rows + 5 })?.char, 'p');
@@ -265,7 +263,6 @@ async function persistenceWorker(config: Config) {
     await session.idle();
     unwatch = watchWorkspaceSources(workspace, setup.renderer, () => surface.requestRender());
     const events: { phase: string; scope: string }[] = [];
-    // Shortened timers intentionally overlap checkpoint/save with edits.
     persistence.start(workspace, {
       autosaveMs: 80,
       checkpointMs: 40,
@@ -307,7 +304,7 @@ async function persistenceWorker(config: Config) {
     const idleStart = performance.now(),
       idleCpuStart = process.cpuUsage(),
       idleBytes = output.bytes;
-    await Bun.sleep(2200); // Includes at least one real source-monitor poll.
+    await Bun.sleep(2200);
     const idle = {
       elapsedMs: performance.now() - idleStart,
       cpuMicros: process.cpuUsage(idleCpuStart),
@@ -410,7 +407,6 @@ if (workerIndex !== -1) {
   const config = JSON.parse(process.argv[workerIndex + 1]!) as Config;
   const result =
     config.kind === 'persistence' ? await persistenceWorker(config) : await renderWorker(config);
-  // Native stats contain bigint counters.
   process.stdout.write(
     JSON.stringify(result, (_, value) => (typeof value === 'bigint' ? value.toString() : value))
   );

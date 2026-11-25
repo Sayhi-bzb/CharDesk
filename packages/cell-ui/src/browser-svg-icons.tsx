@@ -4,7 +4,6 @@ import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 import type { CellSurfaceGeometryTransform } from "./browser-surface-geometry.js";
 import type { FrameSnapshot, WidgetId } from "./types.js";
 
-/** Trusted React SVG elements, anchored to existing Cell node IDs. */
 export type CellSvgIcons = Readonly<Record<WidgetId, ReactElement<SVGProps<SVGSVGElement>>>>;
 
 export function CellSvgIconLayer({ frame, metrics, icons, foreground, geometry }: Readonly<{

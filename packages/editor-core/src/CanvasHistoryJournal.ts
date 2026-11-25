@@ -45,7 +45,6 @@ const operationBytes = (envelope: CanvasMutationEnvelope) => {
   );
 };
 
-/** Session-only semantic Undo/Redo history that survives a Y.Doc generation swap. */
 export class CanvasHistoryJournal {
   #versions = new WeakMap<object, number>();
   #versionSequence = 0;
@@ -62,7 +61,6 @@ export class CanvasHistoryJournal {
     return this.#histories.get(documentId)?.undo.at(-1)?.operationId;
   }
 
-  /** Isolated preparation retains undo eligibility without sharing mutable history groups. */
   copyHistoryTo(target: CanvasHistoryJournal, key: string) {
     const history = this.#histories.get(key);
     if (history) target.#histories.set(key, structuredClone(history));

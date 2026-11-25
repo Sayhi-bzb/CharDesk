@@ -9,7 +9,6 @@ const synchronize = cwd => {
     execFileSync(npm, ["run", script], { cwd, stdio: "inherit" });
 };
 
-// Complete the candidate locally before Release Please writes its one PR commit.
 export function prepareWorkspaceUpdates(release, { cwd, sync = synchronize }) {
   cwd = path.resolve(cwd);
   if (git(cwd, ["status", "--porcelain", "--untracked-files=no"]).trim())

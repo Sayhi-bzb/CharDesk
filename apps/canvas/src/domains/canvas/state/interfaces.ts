@@ -24,7 +24,6 @@ export type PendingCanvasCameraPlacement = {
 };
 
 export type EditorState = {
-  /** Atomic, page-scoped interaction authority. */
   interaction: CanvasInteractionSnapshot;
   tool: ToolType;
   canvasMode: CanvasMode;
@@ -41,10 +40,8 @@ export type EditorState = {
   canRedo: boolean;
 };
 
-/** Read-only shape exposed to Canvas consumers. Mutations live in canvasCommands. */
 export type CanvasState = EditorState;
 
-/** Zustand-compatible read port. The mutable Store remains inside CanvasRuntime. */
 export interface CanvasStateStore {
   getState(): CanvasState;
   getInitialState(): CanvasState;

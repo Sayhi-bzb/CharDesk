@@ -35,7 +35,6 @@ const axisProximity = (position: number, start: number, length: number, distance
   return 0;
 };
 
-/** Host units in, viewport displacement out. Hosts own scheduling and camera delivery. */
 export class CanvasEdgeScroll {
   #session: EdgeScrollSession | null = null;
   #edgeEnteredAt: number | null = null;

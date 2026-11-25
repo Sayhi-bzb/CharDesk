@@ -41,11 +41,6 @@ export const locateCharGraphSourceRange = (
   if (fromCursor >= scope.from && fromCursor + raw.length <= scope.to) {
     return { from: fromCursor, to: fromCursor + raw.length };
   }
-  // Never map a later token back to an earlier occurrence of the same raw
-  // text. That makes source ranges monotonic when Markdown contains repeated
-  // paragraphs, nested lists, or repeated code blocks. Callers still get a
-  // bounded best-effort range when normalization or a parser extension means
-  // the raw token is not byte-for-byte present in the source.
   return {
     from: searchFrom,
     to: Math.min(searchFrom + raw.length, scope.to),

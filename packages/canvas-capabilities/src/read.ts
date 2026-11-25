@@ -127,7 +127,6 @@ const base64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
-/** One transport-neutral read result. Hosts resolve targets and encode the captured image plan. */
 export async function readCanvasSurface(
   surface: CanvasSurfaceReader,
   request: CanvasReadRequest,
@@ -164,7 +163,6 @@ export async function readCanvasSurface(
   if (representation === 'text' || representation === 'both')
     contentBlocks.push({ type: 'text', text: content });
   if (representation === 'cells') {
-    // Keep exact values visible to content-only clients without repeating every field name.
     const columns = [
       'x',
       'y',
@@ -195,7 +193,6 @@ export async function readCanvasSurface(
         return [cell.x, cell.y, cell.char, id];
       }),
     };
-    // Share repeated styles when it is smaller; never truncate exact Cell data.
     const presentation =
       JSON.stringify(packed).length < JSON.stringify(direct).length ? packed : direct;
     contentBlocks.push({
@@ -227,9 +224,7 @@ export async function readCanvasSurface(
           };
           contentBlocks.push({ type: 'image', ...image, data: base64(bytes) });
         }
-      } catch {
-        /* A raster Host failure must not discard a successful text read. */
-      }
+      } catch { /* empty */ }
     }
     if (!image)
       contentBlocks.push({
@@ -253,7 +248,6 @@ export async function readCanvasSurface(
     image,
   };
   const response = { ...structuredContent, content, contentBlocks, structuredContent };
-  // Leave room for transport envelopes within the MCP/CLI 1 MiB message limit.
   if (
     image &&
     new TextEncoder().encode(JSON.stringify(response)).length >

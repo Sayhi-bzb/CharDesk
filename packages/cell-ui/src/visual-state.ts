@@ -1,7 +1,6 @@
 import type { WidgetNode, WidgetTree } from "./types.js";
 import { isActionableKind, isTextEditorKind } from "./widget-capabilities.js";
 
-/** Geometry/behavior projection, independent of colors and rendering. */
 export const projectWidgetState = (tree: WidgetTree, node: WidgetNode) => {
   let owner: WidgetNode | undefined = node;
   while (owner && !isActionableKind(owner.kind)) {

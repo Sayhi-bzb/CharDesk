@@ -13,22 +13,17 @@ export function terminalKeyboardOptions(terminalProgram: string | undefined): Ki
     disambiguate: true,
     alternateKeys: true,
     events: true,
-    // Warp's SGR mouse encoder omits modifiers. Obtain their lifetimes from
-    // independent key events; associated text preserves ordinary typing.
     ...(terminalProgram === 'WarpTerminal' ? { allKeysAsEscapes: true, reportText: true } : {}),
   };
 }
 
-/** Current input evidence. Explicit snapshots repair missing edges; only Warp needs edge fallback. */
 export class TerminalInputModifiers {
   #pressed = new Set<string>();
   #held: MouseModifiers = { shift: false, alt: false, ctrl: false };
 
-  /** Returns whether the event is a standalone modifier, which must not reach text input. */
   observeKey(key: ModifierKeyEvent, policy: TerminalInputPolicy) {
     const snapshot = terminalKeyModifiers(key);
     if (key.source !== 'kitty') {
-      // A user cancel remains an escape hatch when a legacy Escape has no full snapshot.
       if (key.name === 'escape' && !Object.values(snapshot).some(Boolean)) this.clear();
       return false;
     }
@@ -38,8 +33,6 @@ export class TerminalInputModifiers {
       if (key.eventType === 'release') this.#pressed.delete(key.name);
       else this.#pressed.add(key.name);
       if (mouseModifierSource(policy) === 'keyboard-fallback') {
-        // Warp can retain the releasing key's own modifier bit. Known opposite-side
-        // presses still count; other groups always use this event's snapshot.
         snapshot[own] =
           key.eventType !== 'release' ||
           this.#pressed.has(`left${own}`) ||
@@ -74,8 +67,6 @@ export class TerminalInputModifiers {
       this.#accept(mouse);
       return { ...mouse };
     }
-    // Warp reserves Shift+mouse. Explicitly forwarded Shift still works, but a
-    // cached Shift must not turn its next ordinary click into range extension.
     return {
       shift: mouse.shift,
       alt: mouse.alt || this.#held.alt,

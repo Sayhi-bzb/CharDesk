@@ -65,7 +65,6 @@ export function CanvasActivityOverlay() {
   const target = nextActivityTarget(marker.ranges, world);
   const visible = marker.ranges.filter((range) => range.y + 1 > world.top && range.y < world.bottom
     && range.to > world.left && range.from < world.right);
-  // One SVG path represents sparse changed Cells without hundreds of DOM nodes.
   const path = visible.map((range) => {
     const left = offsetX + Math.max(range.from, world.left) * cellWidth;
     const right = offsetX + Math.min(range.to, world.right) * cellWidth;

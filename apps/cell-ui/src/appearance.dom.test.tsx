@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GalleryAppearance } from "./appearance";
 import { GalleryHeader } from "./gallery-header";
 
-// Vitest disables CSS processing; exercise the link lifecycle with a local URL.
 vi.mock("@chardesk/font-fusion/fonts.css?url", () => ({ default: "/packages/font-fusion/fonts.css" }));
 vi.mock("@chardesk/font-xiaolai/fonts.css?url", () => ({ default: "/packages/font-xiaolai/fonts.css" }));
 

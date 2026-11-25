@@ -412,7 +412,6 @@ class CanvasWorkspaceRuntime {
   }
 
   closeSplit() {
-    // View bindings and cameras stay alive so reopening restores the workspace.
   }
 
   syncCanvasState(

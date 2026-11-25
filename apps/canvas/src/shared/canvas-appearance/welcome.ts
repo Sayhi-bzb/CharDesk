@@ -14,7 +14,6 @@ function readRgb(value: string): string | null {
   if (normalized) return normalized;
   if (cssColors.has(value)) return cssColors.get(value)!;
   if (typeof document === 'undefined') return null;
-  // Browser-computed colors can remain OKLCH. Let the browser convert its own CSS to sRGB.
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });

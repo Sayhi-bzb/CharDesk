@@ -8,7 +8,6 @@ export class OperationCancelled extends Error {
   }
 }
 
-/** One owner replaces its own pending intent; clients do not cancel one another. */
 export class OperationCoordinator {
   readonly interactiveOwner = {};
   readonly #current = new WeakMap<object, OperationTicket>();

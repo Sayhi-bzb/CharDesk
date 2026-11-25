@@ -59,8 +59,6 @@ class Terminal:
         self.send(f"\x1b[<0;{x+1};{y+1}M\x1b[<0;{x+1};{y+1}m".encode())
 
     def call(self, operation, payload, success=True):
-        # Drain the TUI while the independent CLI runs, so output backpressure
-        # cannot be mistaken for a runtime deadlock.
         with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
             command = subprocess.Popen(CLI + ["canvas", operation, "--file", str(self.target), "--json"],
                                        stdin=subprocess.PIPE, stdout=output, stderr=errors,
@@ -105,7 +103,7 @@ class Terminal:
 
 def shared_canvas(t):
     t.until(lambda: b"F1 for shortcuts" in t.wire, "startup")
-    t.click(2, 22)  # Dock Edit
+    t.click(2, 22)
     t.click(0, 1)
     t.send("HUMAN界".encode())
     initial = t.read()
@@ -121,7 +119,7 @@ def shared_canvas(t):
     repeated = t.call("write", request)
     assert repeated["version"] == written["version"], repeated
     assert t.read()["version"] == after["version"]
-    t.send(b"\x11")  # Ctrl+Q: save and quit
+    t.send(b"\x11")
     t.stopped()
     reopened = t.read()
     assert reopened["version"] == after["version"] and "HUMAN界!" in reopened["content"], reopened
@@ -135,12 +133,11 @@ def interrupted_ui(t):
     t.click(0, 1)
     t.send(b"BEFORE")
     before = t.read()
-    # Help owns typing; a resize cancels the in-progress pointer gesture.
-    t.send(b"\x1bOP")  # F1
+    t.send(b"\x1bOP")
     t.send(b"MUST_NOT_EDIT")
     assert t.read()["version"] == before["version"]
     t.send(b"\x1b")
-    t.drain(0.1)  # legacy ESC disambiguation
+    t.drain(0.1)
     t.send(b"\x1b[<0;2;3M\x1b[<32;8;5M")
     fcntl.ioctl(t.slave, termios.TIOCSWINSZ, struct.pack("HHHH", 6, 18, 0, 0))
     t.child.send_signal(signal.SIGWINCH)

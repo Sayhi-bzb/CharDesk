@@ -11,7 +11,6 @@ import type { ClipboardTextPreparation } from '@chardesk/editor-core/clipboard/c
 
 export type PasteMode = 'auto' | 'plain' | 'ansi' | 'markdown';
 
-/** Capture Host appearance once, then compile outside document transactions. */
 export function createTextPreparation(
   mode: PasteMode = 'auto',
   captureAppearance?: () => Promise<TerminalAppearanceSnapshot>,
@@ -56,7 +55,6 @@ export function createTextPreparation(
       forced: mode === 'markdown',
     });
     if (appearance && !appearance.palette) {
-      // Preserve deliberate backgrounds even when native RGB is unknown.
       const explicitBackgrounds = new Set([
         profile.renderThemes[themeMode].background,
         profile.renderThemes[themeMode].surface,

@@ -226,7 +226,6 @@ export const createCanvasSessionCommands = (
       set({ canvasSessions: target
         ? state.canvasSessions.map((session) => session.id === sessionId ? replacement : session)
         : [...state.canvasSessions, replacement] });
-      // Rebuild the active projection if this was the currently visible legacy shell.
       if (state.activeCanvasId === sessionId) {
         const runtime = activateSessionRuntime(documents, replacement, state.tool);
         set(createSessionActivationPatch(get().canvasSessions, sessionId, runtime,
@@ -311,8 +310,6 @@ export const createCanvasSessionCommands = (
         sourceBinding,
       };
       const nextSessions = [...sessionsWithSnapshot, newSession];
-      // Register source ownership before the document lifecycle observes activation.
-      // Persistence can then keep the runtime shell ephemeral from its first frame.
       set({ canvasSessions: nextSessions });
       replaceDocumentSnapshot(
         documents,

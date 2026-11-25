@@ -4,7 +4,7 @@ const file = '.pi/chardesk-bridge.local.json';
 try {
   const pairing = JSON.parse(await readFile(file, 'utf8'));
   let running = false;
-  try { process.kill(pairing.pid, 0); running = true; } catch { /* Server stopped. */ }
+  try { process.kill(pairing.pid, 0); running = true; } catch {   }
   if (running) {
     const url = new URL(pairing.bridgeUrl);
     if (url.protocol !== 'ws:' || url.hostname !== '127.0.0.1') throw new Error('Invalid local pairing URL.');

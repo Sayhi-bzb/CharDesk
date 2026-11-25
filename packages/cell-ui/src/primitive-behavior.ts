@@ -13,7 +13,6 @@ export const menuScopeId = (frame: FrameSnapshot, targetId: WidgetId): WidgetId 
   return node?.id ?? null;
 };
 
-/** React adapters own values; this function owns Select command interpretation. */
 export const selectCommandEffect = (
   command: WidgetCommand,
   triggerId: WidgetId,
@@ -30,7 +29,6 @@ export const selectCommandEffect = (
     ? { type: "select", targetId: command.targetId } : null;
 };
 
-/** Select defers dismissal; Menu defers the action itself. */
 export const confirmationCompletion = (frame: FrameSnapshot, targetId: WidgetId): WidgetCommand | null => {
   let node = frame.tree.nodes.get(targetId);
   if (node?.kind === "menu-item") return { type: "activate", targetId };

@@ -1,0 +1,217 @@
+<div id="canvas-effects-proposal">
+  <style>
+    #canvas-effects-proposal { display: grid; gap: 12px; }
+    #canvas-effects-proposal .effect-controls { display: flex; flex-wrap: wrap; gap: 8px; padding-right: 90px; }
+    #canvas-effects-proposal .terminal-preview {
+      --terminal-paper: light-dark(#fafaf7, #191c23);
+      --terminal-ink: light-dark(#292d38, #e0e4ed);
+      --terminal-muted: light-dark(#69717f, #a0a8b8);
+      --terminal-actor: light-dark(#137d78, #6ac9bc);
+      --terminal-style: light-dark(#7952a3, #c5a0ee);
+      background: var(--terminal-paper);
+      color: var(--terminal-ink);
+      font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    #canvas-effects-proposal canvas { display: block; width: 100%; }
+    #canvas-effects-proposal .terminal-footer { display: flex; justify-content: space-between; gap: 10px; padding: 6px 12px; }
+    #canvas-effects-proposal .terminal-tools { display: flex; gap: 14px; }
+    #canvas-effects-proposal .terminal-status { padding: 0 12px 5px; color: var(--terminal-muted); }
+    #canvas-effects-proposal .color-probe { position: absolute; visibility: hidden; pointer-events: none; }
+    @media (max-width: 450px) { #canvas-effects-proposal .effect-controls { padding-right: 0; } }
+  </style>
+  <div class="effect-controls" role="group" aria-label="播放候选效果">
+    <button class="btn" type="button" data-effect="render" aria-pressed="false">Render</button>
+    <button class="btn" type="button" data-effect="erase" aria-pressed="false">Erase</button>
+    <button class="btn" type="button" data-effect="fill" aria-pressed="false">Fill</button>
+    <button class="btn btn-ghost" type="button" data-replay disabled>重播</button>
+  </div>
+  <div class="text-small" data-description role="status" aria-live="polite">选择一个操作播放</div>
+  <div class="terminal-preview" aria-label="Canvas 动画效果预览">
+    <span class="color-probe" aria-hidden="true"></span>
+    <canvas role="img" aria-label="Render 逐行替换内容，Erase 逆序逐行清空，Fill 逐行修改样式。背景连续覆盖当前改动行的起点到终点，包括空格，随操作移到下一行，完成后直接消失。">输入 → 草稿；操作只影响右侧草稿区域。</canvas>
+    <div class="terminal-footer"><div class="terminal-tools"><span>Edit</span><span>Hand</span><span>Style</span></div><span>Agents</span></div>
+    <div class="terminal-status">F1 for shortcuts</div>
+  </div>
+  <script type="application/json" data-step-frames>{"render":{"rows":3,"duration":2400,"frames":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]},"erase":{"rows":7,"duration":2600,"frames":[0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7]},"fill":{"rows":7,"duration":2300,"frames":[0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7]}}</script>
+  <script>
+    (() => {
+      const root = document.getElementById('canvas-effects-proposal');
+      const product = root.querySelector('.terminal-preview');
+      const canvas = root.querySelector('canvas');
+      const ctx = canvas.getContext('2d');
+      const description = root.querySelector('[data-description]');
+      const replay = root.querySelector('[data-replay]');
+      const buttons = [...root.querySelectorAll('[data-effect]')];
+      const probe = root.querySelector('.color-probe');
+      const segmenter = new Intl.Segmenter('zh', { granularity: 'grapheme' });
+      const labels = { render: '逐行替换', erase: '逆序逐行清空', fill: '逐行修改样式' };
+      const traces = JSON.parse(root.querySelector('[data-step-frames]').textContent);
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+      let mode = null;
+      let rangeVisible = false;
+      let visible = 0;
+      let request;
+      let started;
+      let layout;
+      let colors;
+      const widthOf = (glyph) => /[\p{Extended_Pictographic}\p{Regional_Indicator}\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7af\uf900-\ufaff\uff01-\uff60]/u.test(glyph) ? 2 : 1;
+      const graphemes = (text) => [...segmenter.segment(text)].map((part) => part.segment);
+      const textWidth = (text) => graphemes(text).reduce((sum, glyph) => sum + widthOf(glyph), 0);
+      const box = (lines, width) => ['┌' + '─'.repeat(width - 2) + '┐', ...lines.map((line) => '│ ' + line + ' '.repeat(Math.max(0, width - 4 - textWidth(line))) + ' │'), '└' + '─'.repeat(width - 2) + '┘'];
+      const source = box(['INPUT', '', 'Unicode 🦀'], 16);
+      const before = box(['DRAFT', '', '整理输入…', '等待校验', ''], 28);
+      const after = box(['READY ✓', '', '输入 → 校验 → 保存', 'Unicode 🦀', ''], 28);
+      const grid = (lines) => {
+        const cells = [];
+        lines.forEach((line, y) => {
+          let x = 0;
+          for (const glyph of graphemes(line)) {
+            const width = widthOf(glyph);
+            if (glyph !== ' ') cells.push({ x, y, glyph, width });
+            x += width;
+          }
+        });
+        return cells;
+      };
+      const oldCells = grid(before), newCells = grid(after);
+      const identical = (cell, cells) => cells.some((other) => other.x === cell.x && other.y === cell.y && other.glyph === cell.glyph);
+      const oldChanged = oldCells.filter((cell) => !identical(cell, newCells));
+      const newChanged = newCells.filter((cell) => !identical(cell, oldCells));
+      const changed = [...oldChanged, ...newChanged];
+      const rows = {
+        render: [...new Set(changed.map((cell) => cell.y))].sort((a, b) => a - b),
+        erase: Array.from({ length: before.length }, (_, y) => y).reverse(),
+        fill: Array.from({ length: before.length }, (_, y) => y),
+      };
+      const rowOf = (cell) => rows[mode].indexOf(cell.y);
+      const changes = { render: changed, erase: oldCells, fill: oldCells };
+      const feedbackSpans = () => {
+        if (!mode || !rangeVisible || visible === 0) return [];
+        const y = rows[mode][visible - 1];
+        const cells = changes[mode].filter((cell) => cell.y === y);
+        if (!cells.length) return [];
+        const x = Math.min(...cells.map((cell) => cell.x));
+        const right = Math.max(...cells.map((cell) => cell.x + cell.width));
+        return [{ x, y, width: right - x }];
+      };
+      const readColor = (name) => {
+        probe.style.color = 'var(--terminal-' + name + ')';
+        return getComputedStyle(probe).color;
+      };
+      const glyph = (cell, at, color) => {
+        ctx.fillStyle = color;
+        ctx.fillText(cell.glyph, (cell.x + at.x) * layout.cell, (cell.y + at.y) * layout.line);
+      };
+      const fill = (x, y, width, height, color, alpha) => {
+        if (alpha <= 0) return;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color;
+        ctx.fillRect(x * layout.cell, y * layout.line, width * layout.cell, height * layout.line);
+        ctx.globalAlpha = 1;
+      };
+      const paint = () => {
+        if (!layout || !colors) return;
+        ctx.clearRect(0, 0, layout.width, layout.height);
+        ctx.font = getComputedStyle(product).font;
+        ctx.textBaseline = 'top';
+        grid(['CANVAS']).forEach((cell) => glyph(cell, { x: 3, y: 1 }, colors.muted));
+        grid(source).forEach((cell) => glyph(cell, layout.source, colors.ink));
+        grid(layout.stacked ? ['│', '↓'] : ['────→']).forEach((cell) => glyph(cell, layout.arrow, colors.muted));
+        const spans = feedbackSpans();
+        for (const span of spans)
+          fill(layout.target.x + span.x, layout.target.y + span.y, span.width, 1, colors.actor, .26);
+        if (!mode) oldCells.forEach((cell) => glyph(cell, layout.target, colors.ink));
+        if (mode === 'render') {
+          oldCells.filter((cell) => identical(cell, newCells) || rowOf(cell) >= visible)
+            .forEach((cell) => glyph(cell, layout.target, colors.ink));
+          newChanged.filter((cell) => rowOf(cell) < visible)
+            .forEach((cell) => glyph(cell, layout.target, colors.ink));
+        }
+        if (mode === 'erase') oldCells.filter((cell) => rowOf(cell) >= visible)
+          .forEach((cell) => glyph(cell, layout.target, colors.ink));
+        if (mode === 'fill') oldCells.forEach((cell) =>
+          glyph(cell, layout.target, rowOf(cell) < visible ? colors.style : colors.ink));
+        canvas.dataset.effect = mode || 'idle';
+        canvas.dataset.rangeVisible = String(spans.length > 0);
+        canvas.dataset.rangeAlpha = spans.length ? '0.26' : '0';
+        canvas.dataset.backgroundSpans = JSON.stringify(spans);
+        canvas.dataset.activeRow = spans[0]?.y ?? '';
+        canvas.dataset.visibleRows = String(visible);
+        canvas.dataset.totalRows = String(mode ? rows[mode].length : 0);
+        canvas.dataset.finished = String(!rangeVisible && Boolean(mode));
+      };
+      const step = (now) => {
+        const elapsed = now - started;
+        const trace = traces[mode];
+        const next = reduce.matches ? trace.rows : trace.frames[Math.min(trace.frames.length - 1, Math.floor(elapsed / 40))];
+        const active = elapsed < (reduce.matches ? 900 : trace.duration + 900);
+        if (visible !== next || rangeVisible !== active) {
+          visible = next;
+          rangeVisible = active;
+          if (!active) description.textContent = labels[mode] + ' · 完成';
+          else if (next === trace.rows) description.textContent = labels[mode] + ' · 完成';
+          paint();
+        }
+        if (active) request = requestAnimationFrame(step);
+      };
+      const play = (name) => {
+        cancelAnimationFrame(request);
+        mode = name;
+        visible = reduce.matches ? traces[mode].rows : 0;
+        rangeVisible = true;
+        started = performance.now();
+        buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.effect === mode)));
+        replay.disabled = false;
+        description.textContent = labels[mode] + ' · 进行中';
+        paint();
+        request = requestAnimationFrame(step);
+      };
+      const remember = () => {
+        if (window.openai?.setWidgetState)
+          window.openai.setWidgetState({ modelContent: { preview: 'render-erase-fill-action-bg', selectedEffect: mode }, privateContent: null }).catch(() => {});
+      };
+      const resize = () => {
+        const width = canvas.getBoundingClientRect().width;
+        ctx.font = getComputedStyle(product).font;
+        const cell = ctx.measureText('M').width;
+        const line = parseFloat(getComputedStyle(product).lineHeight);
+        const stacked = width / cell < 70;
+        const height = (stacked ? 20 : 14) * line;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.height = height + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        layout = { width, height, cell, line, stacked,
+          source: { x: 3, y: stacked ? 3 : 5 },
+          arrow: { x: stacked ? 10 : 20, y: stacked ? 8 : 7 },
+          target: { x: stacked ? 3 : 27, y: stacked ? 11 : 4 } };
+        colors = Object.fromEntries(['ink', 'muted', 'actor', 'style'].map((name) => [name, readColor(name)]));
+        paint();
+      };
+      buttons.forEach((button) => button.addEventListener('click', () => { play(button.dataset.effect); remember(); }));
+      replay.addEventListener('click', () => { if (mode) play(mode); });
+      const restore = (state) => {
+        const selected = state?.modelContent?.selectedEffect;
+        if (state?.modelContent?.preview === 'render-erase-fill-action-bg' && selected && labels[selected] && selected !== mode) {
+          cancelAnimationFrame(request);
+          mode = selected;
+          visible = traces[mode].rows;
+          rangeVisible = false;
+          buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.effect === mode)));
+          replay.disabled = false;
+          description.textContent = labels[mode] + ' · 完成';
+          paint();
+        }
+      };
+      new ResizeObserver(resize).observe(canvas);
+      new MutationObserver(resize).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', resize);
+      window.addEventListener('openai:set_globals', (event) => {
+        if (event.detail?.globals?.widgetState) restore(event.detail.globals.widgetState);
+      });
+      resize();
+      restore(window.openai?.widgetState);
+    })();
+  </script>
+</div>

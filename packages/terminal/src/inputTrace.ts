@@ -2,8 +2,6 @@ import { openSync, closeSync, writeSync } from 'node:fs';
 import type { KeyEvent } from '@opentui/core';
 import type { CanvasSurface } from './surface.ts';
 
-// Navigation, deletion controls and mouse protocols only. Never record pasted text, OSC payloads,
-// printable key names, or Kitty encodings of printable Unicode code points.
 const navigationSequence =
   // eslint-disable-next-line no-control-regex -- ANSI Escape is part of the terminal input protocol.
   /^(?:\x1b\[<\d+;\d+;\d+[mM]|\x1b\[[\d;:]*[ABCDHF~]|\x1bO[ABCDHP-S]|\x1b\[57[34]\d{2}[\d;:]*u)+$/;
@@ -13,7 +11,6 @@ const deletionSequence =
 const navigationName =
   /^(?:up|down|left|right|home|end|pageup|pagedown|escape|tab|backspace|delete|f\d+|(?:left|right)?(?:shift|alt|option|meta|super|ctrl|control))$/;
 
-/** Opt-in evidence from the real terminal, without modifying input dispatch. */
 export function attachInputTrace(surface: CanvasSurface, path: string) {
   const fd = openSync(path, 'wx', 0o600);
   const { renderer, model } = surface;
@@ -58,7 +55,7 @@ export function attachInputTrace(surface: CanvasSurface, path: string) {
       writeSync(fd, `${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`);
     } catch {
       active = false;
-    } // A failed diagnostic must not interrupt editing.
+    }
   };
   write({
     kind: 'start',

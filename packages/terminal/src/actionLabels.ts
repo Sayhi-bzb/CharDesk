@@ -1,4 +1,3 @@
-/** Command identity never depends on the interface language. */
 export const terminalActionLabels: Readonly<Record<string, string>> = {
   'dock-next': 'Next control',
   'dock-previous': 'Previous control',

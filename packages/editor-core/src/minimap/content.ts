@@ -7,7 +7,6 @@ const foreground: MinimapColor = Object.freeze({ kind: 'foreground' });
 
 export type MinimapRegion = Readonly<{ y: number; height: number; color: MinimapColor }>;
 
-/** Fractional cell coverage preserves both colors of half-block artwork. */
 export function describeMinimapCell(cell: Pick<GridCell, 'char' | 'color' | 'bgColor'>) {
   const width = Math.max(1, getGraphemeCellWidth(cell.char));
   const ink: MinimapColor = isDefaultArtifactForeground(cell)
@@ -37,7 +36,6 @@ export function describeMinimapCell(cell: Pick<GridCell, 'char' | 'color' | 'bgC
 export const resolveMinimapColor = (color: MinimapColor, defaultForeground: string) =>
   color.kind === 'foreground' ? defaultForeground : color.value;
 
-/** Stable tie keys also merge a known default foreground with an identical authored RGB. */
 export function minimapColorKey(color: MinimapColor, defaultForeground?: string | null) {
   const value = color.kind === 'foreground' ? defaultForeground : color.value;
   if (!value) return 'foreground';

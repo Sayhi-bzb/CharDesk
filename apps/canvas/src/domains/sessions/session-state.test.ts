@@ -63,7 +63,6 @@ describe('sessionHelpers', () => {
       const sessions: CanvasSessionDescriptor[] = [
         { id: existingId, name: 'Test', mode: 'freeform' }
       ];
-      // Generate multiple IDs to increase collision chance
       for (let i = 0; i < 10; i++) {
         const id = createSessionId(sessions);
         expect(id).not.toBe(existingId);
@@ -71,7 +70,6 @@ describe('sessionHelpers', () => {
     });
 
     it('should generate different IDs on collision', () => {
-      // Create a session with an ID that has the compact Canvas shape.
       const sessions: CanvasSessionDescriptor[] = [
         { id: 'cv-abc123def4', name: 'Test', mode: 'freeform' }
       ];
@@ -113,7 +111,7 @@ describe('sessionHelpers', () => {
 
       expect(result[0].mode).toBe('freeform');
       expect(result[0].grid).toHaveLength(1);
-      expect(result[1]).toEqual(sessions[1]); // Unchanged
+      expect(result[1]).toEqual(sessions[1]);
     });
 
     it('should not modify non-active sessions', () => {

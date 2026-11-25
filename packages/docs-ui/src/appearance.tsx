@@ -63,7 +63,7 @@ const readFontPreference = (key: string): GalleryFont => {
   }
 };
 const writeFontPreference = (key: string, font: GalleryFont) => {
-  try { localStorage.setItem(key, font); } catch { /* In-memory switching remains available. */ }
+  try { localStorage.setItem(key, font); } catch { /* empty */ }
 };
 const initialFontState = (key: string): GalleryFontState => {
   const preferredFont = readFontPreference(key);
@@ -106,7 +106,7 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
   const toggleTheme = () => {
     const next = mode === "light" ? "dark" : "light";
     setPreference(next);
-    try { localStorage.setItem(themePreferenceKey, next); } catch { /* In-memory switching remains available. */ }
+    try { localStorage.setItem(themePreferenceKey, next); } catch { /* empty */ }
   };
   const selectFont = (target: GalleryFont) => {
     setFontState((current) => current.status === "loading" ? current : {
@@ -178,7 +178,6 @@ export function DocumentationAppearance({ children, feedback, storagePrefix = "c
     <div ref={rootRef} className="gallery-page" data-gallery-theme={mode} data-gallery-font={font} data-gallery-font-status={fontStatus} style={style}>{children}</div>
   </AppearanceContext.Provider>;
 }
-// Shares the resolved CSS theme and appearance controls across the Gallery.
 export const useDocumentationAppearance = () => useContext(AppearanceContext);
 const galleryFontItems = (Object.keys(galleryFontOptions) as GalleryFont[]).map((font) => ({
   id: `gallery-font-option-${font}`,

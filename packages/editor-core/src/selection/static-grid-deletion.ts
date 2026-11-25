@@ -58,7 +58,6 @@ export const resolveStaticGridDeletePlan = (input: {
   };
 };
 
-/** Deleting a range preserves it; backward text deletion also rewinds its input session. */
 export function resolveStaticGridDeletionState(
   state: StaticGridState,
   plan: StaticGridDeletePlan,

@@ -252,8 +252,6 @@ export const useManagedCanvasInput = ({
     if (document.activeElement !== textarea) {
       textarea.focus({ preventScroll: true });
     }
-    // Safari does not consistently dispatch cut/copy for an empty editable
-    // target. Keep a selected sentinel so the native clipboard event fires.
     primeManagedTextarea();
   }, [primeManagedTextarea]);
   const focusCanvasSurface = useCallback(() => {

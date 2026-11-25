@@ -14,7 +14,6 @@ export type ContentRecovery = {
   copyId: string | null;
 };
 
-/** Runtime metadata references native content; it never replaces the document file. */
 export class LocalCanvasStore {
   readonly #db: Database;
   #closed = false;
@@ -107,7 +106,6 @@ export class LocalCanvasStore {
       .immediate();
   }
 
-  /** Publish the candidate before file replacement, so either side of a crash is recognizable. */
   prepareVersion(canvasId: string, digest: string, version: string) {
     this.#db
       .query(
@@ -184,7 +182,6 @@ export class LocalCanvasStore {
       .run(canvasId, version);
   }
 
-  /** Reserve durably before dispatch. An interrupted reservation is never silently replayed. */
   runRequest(
     canvasId: string,
     requestId: string,

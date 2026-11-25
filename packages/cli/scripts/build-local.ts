@@ -1,4 +1,4 @@
-import { readFile, cp } from 'node:fs/promises';
+import { readFile, cp, copyFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepareSnapshotFonts } from '../../terminal/scripts/snapshotFonts.ts';
@@ -44,8 +44,6 @@ const result = await Bun.build({
     {
       name: 'chardesk-workspace-sources',
       setup(build) {
-        // Workspace sources have their own tsconfigs; resolve product aliases
-        // explicitly so no web workspace install or generated dist is required.
         build.onResolve({ filter: /^(@chardesk\/|@\/)/ }, ({ path }) => {
           if (path.startsWith('@chardesk/legacy-blackboard/'))
             return {
@@ -67,6 +65,14 @@ const result = await Bun.build({
   ],
 });
 if (!result.success) throw new AggregateError(result.logs, 'CLI bundle failed');
+await copyFile(
+  resolve(root, 'packages/terminal/src/tachyonfx.wasm'),
+  resolve(directory, 'dist/tachyonfx.wasm')
+);
+await copyFile(
+  resolve(root, 'packages/terminal/tachyonfx/THIRD-PARTY-LICENSES.txt'),
+  resolve(directory, 'dist/LICENSE.tachyonfx')
+);
 await cp(
   resolve(root, 'apps/canvas/public/data/characters'),
   resolve(directory, 'dist/characters'),

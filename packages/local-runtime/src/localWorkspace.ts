@@ -9,7 +9,6 @@ import { CanvasFile, readOptional, resolveCanvasFilePath } from './document.ts';
 import { createWelcomeSource } from './welcome.ts';
 import { CanvasRecoveryRequired } from './recovery.ts';
 
-/** Interactive composition only; explicit files take precedence over restored navigation. */
 export async function openLocalWorkspace(
   options: ReturnType<typeof parseOptions>,
   paths: AppPaths,

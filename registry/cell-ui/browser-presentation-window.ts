@@ -5,7 +5,6 @@ import { CELL_SURFACE_GUARD_CELLS } from "./browser-presentation.js";
 const clipsVertically = (value: string): boolean =>
   value === "auto" || value === "scroll" || value === "hidden" || value === "clip";
 
-/** A bounded paint window in full-document Cell coordinates; null means paint the whole Surface. */
 export const resolveCellPresentationWindow = (
   surface: HTMLElement,
   viewport: CellSize,

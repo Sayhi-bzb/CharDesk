@@ -19,6 +19,7 @@ import { navigationActions } from './navigation.ts';
 import { TerminalInspector } from './inspector.ts';
 import type { TerminalUpdates } from './updates.ts';
 import { TerminalAgentsPanel } from './agentsPanel.ts';
+import { TerminalActivityEffects } from './activityEffects.ts';
 
 const unavailableClipboard: TerminalClipboardAccess = {
   canRead: () => false,
@@ -40,6 +41,16 @@ export function attachControls(
     editor = model.editor;
   const detachClipboard = model.configureClipboard(clipboardPort);
   const disposers: Array<() => void> = [];
+  if (sessions && workspace) {
+    const effects = new TerminalActivityEffects(surface, sessions.agents, () =>
+      workspace.active ? sessions.forFile(workspace.active)?.id : undefined
+    );
+    surface.activityEffects = effects;
+    disposers.push(() => {
+      effects.dispose();
+      surface.activityEffects = undefined;
+    });
+  }
   const settingsDialog = new TerminalSettingsDialog(surface, updates, clipboardPort);
   disposers.push(() => settingsDialog.dispose());
   if (updates) {
@@ -119,6 +130,7 @@ export function attachControls(
   const editOnly = () => surface.tool === 'edit';
   const panelActions = new Set(['copy', 'cut', 'paste', 'select-all']);
   const runInput = (run: () => void | EditorCommandResult) => {
+    surface.activityEffects?.finishMutations();
     try {
       return run();
     } catch (error) {
@@ -573,6 +585,7 @@ export function attachControls(
     })
   );
   const detachIntercept = keymap.intercept('key', ({ event: key, consume }) => {
+    surface.activityEffects?.finishMutations();
     if (surface.inputModifiers.observeKey(key, surface.inputPolicy)) {
       consume();
       return;
@@ -582,8 +595,6 @@ export function attachControls(
       return;
     }
     dockClosingKey = null;
-    // Resolve application bindings (including sequence prefixes) before modal input.
-    // The keymap still owns dispatch, user overrides and repeat/release policy.
     const binding = bindings.resolveEvent(key);
     if (!surface.input.admit('key', binding?.id.replace(/^terminal\./, '') ?? key.name)) {
       consume();
@@ -670,6 +681,7 @@ export function attachControls(
     surface.requestRender();
   };
   const paste = (event: PasteEvent) => {
+    surface.activityEffects?.finishMutations();
     if (!surface.input.admit('paste')) {
       event.preventDefault();
       return;

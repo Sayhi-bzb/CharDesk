@@ -77,7 +77,7 @@ const dialogVariantItems = (["surface", "ghost"] as const).map((value) => ({ id:
 const floatingBorderItems = (["square", "rounded", "none"] as const).map((value) => ({ id: value, label: value }));
 const alertBorderItems = (["none", "square", "rounded"] as const).map((value) => ({ id: value, label: value }));
 const buttonVariantItems = (["solid", "surface", "outline", "ghost"] as const).map((value) => ({ id: value, label: value }));
-const buttonSaveIcon = "\uEB4B"; // cod-save in the pinned Nerd Fonts 3.5.1 catalog.
+const buttonSaveIcon = "\uEB4B";
 const buttonContentItems = [
   { id: "text", label: "text", text: "Save" },
   { id: "icon-only", label: "icon-only", text: buttonSaveIcon },

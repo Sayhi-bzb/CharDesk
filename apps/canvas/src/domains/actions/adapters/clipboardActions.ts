@@ -82,8 +82,6 @@ export const writeClipboardPayload = async (
   if (event?.clipboardData) {
     event.preventDefault();
     event.clipboardData.setData("text/plain", payload.plain);
-    // Include app-native rich data on copy events so in-app paste can
-    // reconstruct multi-cell selections while external apps still receive plain text.
     if (payload.rich) {
       event.clipboardData.setData(MIME_RICH_DATA, payload.rich);
       const html = buildRichClipboardHtml(payload);
@@ -147,8 +145,6 @@ export const readClipboardPayload = async (
   renderText: RenderClipboardText = renderTextSource,
   context?: TextRenderContext
 ) => {
-  // ClipboardEvent data is only guaranteed to remain readable while the
-  // event is being dispatched. Snapshot every format before the first await.
   const eventRichText = eventDataTransfer?.getData(MIME_RICH_DATA) ?? "";
   const eventPlainText = eventDataTransfer?.getData("text/plain") ?? "";
   const eventHtml = eventDataTransfer?.getData("text/html") ?? "";

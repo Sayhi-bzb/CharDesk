@@ -127,7 +127,6 @@ test('Session commands preserve interaction, support native document round trips
         const [x, y] = key.split(',').map(Number);
         expect(restored.plane.get({ x: x!, y: y! })).toEqual(cell);
       }
-      // Native rectangular text also restores unstyled padding between sparse islands.
       expect(restored.plane.get(point(3))).toEqual({ char: ' ', color: '#000000' });
     } finally {
       restored.dispose();

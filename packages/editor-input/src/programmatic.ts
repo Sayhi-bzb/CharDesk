@@ -3,7 +3,6 @@ import { createKeyInput, type KeyInput } from '@chardesk/keyboard';
 import { createInputSession } from './session.js';
 import { inputStroke } from './engine.js';
 
-/** A non-IO Host for explicit normalized input and catalog queries. */
 export function createProgrammaticInput(metadata: () => HostMetadata, sequenceTimeoutMs = 1500) {
   const target = {};
   const presses = new Set<(event: KeymapEvent) => void>();

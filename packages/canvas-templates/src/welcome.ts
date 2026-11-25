@@ -7,7 +7,6 @@ import { COLOR_PRIMARY_TEXT } from '@chardesk/cell-plane/constants';
 import { parseCharDeskText } from '@chardesk/protocol';
 export { WELCOME_DEMO_MARKDOWN, WELCOME_CASES_MARKDOWN } from './welcome-content.generated.js';
 
-// Keep inherited foreground, authored styles and Unicode widths identical across Hosts.
 const parseAnsiTextCells = (input: string, color: string): PositionedGridCell[] | null => {
   const parsed = parseCharDeskText(input, { defaultStyle: { color } });
   if (!parsed.hasAnsi || !parsed.cells.length) return null;

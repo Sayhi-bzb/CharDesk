@@ -347,9 +347,7 @@ const readPageChannelIds = (doc: Y.Doc) => {
     try {
       const id = decodeURIComponent(match[1]!);
       if (id.length > 0) ids.add(id);
-    } catch {
-      // A malformed channel name is retained but cannot address a Canvas page.
-    }
+    } catch { /* empty */ }
   }
   return ids;
 };
@@ -1433,9 +1431,6 @@ export class BrowserCanvasPersistence implements CanvasDocumentResidency {
         : legacySessions ?? initialSessions).filter(
           ({ id }) => !this.#deletedSessionIds.has(id)
         );
-      // Catalogs written before storagePolicy existed may contain the shipped
-      // Welcome document. Preserve user edits as a real local file while new
-      // boots always get the explicit ephemeral bootstrap session.
       const migratedCatalogSessions = catalogSessions.map((session) => {
         const initial = initialSessions.find(({ id }) => id === session.id);
         if (

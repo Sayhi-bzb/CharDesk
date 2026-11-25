@@ -4,7 +4,6 @@ import {
 } from '@chardesk/editor-core/interaction/edgeScroll';
 import type { CliRenderer } from '@opentui/core';
 
-/** Terminal units are integer cells; fractional speed never reaches the editor. */
 export class TerminalEdgeScroll {
   readonly #scroll: CanvasEdgeScroll;
   #remaining = { x: 0, y: 0 };

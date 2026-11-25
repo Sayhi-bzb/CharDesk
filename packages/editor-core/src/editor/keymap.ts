@@ -167,7 +167,6 @@ export class EditorKeymap<Context = unknown> {
     };
   }
 
-  /** Loads persisted entries, including bindings whose dynamic owner is not mounted yet. */
   hydrateUserBindings(bindings: Readonly<Record<string, readonly ShortcutSequence[]>>) {
     let changed = false;
     for (const [entryId, shortcuts] of Object.entries(bindings)) {
@@ -231,7 +230,6 @@ export class EditorKeymap<Context = unknown> {
     return entry ? (this.#overrides.get(entryId) ?? entry.shortcuts) : undefined;
   }
 
-  /** Effective catalog contributions; runtime precedence belongs to the input Host. */
   list() {
     return [...this.#entries.values()].map((entry) => ({
       ...entry,

@@ -5,7 +5,6 @@ import type { CanvasRuntime } from "@/domains/canvas/public";
 type MigrationCanvas = Pick<CanvasRuntime, "ready" | "getState" | "commands" | "flushPersistence" | "materializeSession">;
 const tasks = new WeakMap<MigrationCanvas, Map<string, Promise<string>>>();
 
-/** Source and journal survive failure; completed native content is never regenerated. */
 export const migrateBlackboard = (canvas: MigrationCanvas, workspaceId: string, repository: LegacyBlackboardRepository = legacyBlackboards): Promise<string> => {
   let pending = tasks.get(canvas);
   if (!pending) { pending = new Map(); tasks.set(canvas, pending); }

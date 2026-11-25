@@ -14,7 +14,6 @@ export type CellToastState = Readonly<{
   dismiss: (id: string) => void;
 }>;
 
-/** Applications own toast content; this hook only owns queue lifetime. */
 export function useCellToastState(): CellToastState {
   const [toasts, setToasts] = useState<readonly CellToastEntry[]>([]);
   const push = useCallback((entry: CellToastEntry) => {
@@ -40,7 +39,6 @@ function TimedToast({ entry, dismiss }: Readonly<{
   </div>;
 }
 
-/** Portals CellSurface-based notices above every surface without stealing focus. */
 export function CellToastViewport({ state }: Readonly<{ state: CellToastState }>) {
   const layer = useCellOverlayLayer();
   if (!layer || state.toasts.length === 0) return null;

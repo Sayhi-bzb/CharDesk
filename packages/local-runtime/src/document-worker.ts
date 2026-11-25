@@ -15,7 +15,6 @@ parentPort!.on('message', ({ id, documentId, title, update, source: baseline }: 
       registry.adoptDocument(documentId, doc);
     }
     const draft = baseline === undefined ? registry.getDocumentDraft(documentId)! : parseCanvasDocument(baseline).document;
-    // The shared serializer still validates the complete native text before it can reach disk.
     const source = baseline ?? serializeCanvasDocument(draft, title);
     const semanticId = sourceDigest(semanticDocumentSource(draft))! as SemanticContentId;
     parentPort!.postMessage({ id, source, semanticId } satisfies SerializationReply);

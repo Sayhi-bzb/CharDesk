@@ -87,7 +87,6 @@ for (const glyph of ['界', '👩🏽‍💻', '🦀']) {
       expect(f.highlighted(1, 0)).toBe(true);
       expect(f.highlighted(2, 0)).toBe(true);
       expect(f.highlighted(3, 0)).toBe(false);
-      // Returning to an ordinary point repaints the old follower, not just its anchor.
       await f.click(3);
       expect(f.highlighted(1, 0)).toBe(false);
       expect(f.highlighted(2, 0)).toBe(false);
@@ -111,7 +110,6 @@ for (const glyph of ['界', '👩🏽‍💻', '🦀']) {
       await f.setup.mockMouse.release(6, CANVAS_TOP);
       await f.setup.renderOnce();
       for (const x of [5, 6, 7]) expect(f.highlighted(x, 1)).toBe(true);
-      // Clip the glyph anchor offscreen; its selected follower must keep its selection background.
       f.model.viewport.x = 6;
       await f.setup.renderOnce();
       expect(f.highlighted(6, 1)).toBe(true);

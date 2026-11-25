@@ -1,0 +1,19 @@
+[package]
+name = "chardesk-tachyonfx"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+tachyonfx = { version = "=0.25.2", default-features = false }
+ratatui-core = { version = "=0.1.2", default-features = false }
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+strip = true

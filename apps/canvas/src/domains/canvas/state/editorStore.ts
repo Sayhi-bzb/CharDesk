@@ -177,7 +177,6 @@ export const createEditorStore = ({
         shouldSchedule: shouldScheduleEditorPersistence,
       }),
       migrate: (persistedState, version) => {
-        // Zustand types migrations as runtime state, while storage owns the persisted DTO.
         return migratePersistedStateToV7(
           persistedState,
           version,

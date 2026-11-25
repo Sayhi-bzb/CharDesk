@@ -192,7 +192,6 @@ test("dragging a Cell row reorders the same app-owned layer list", async ({ page
   await page.mouse.move(end.x, end.y, { steps: 4 });
   await expect.poll(async () => (await readCellPixel(surface, ghostCell.x, ghostCell.y)).slice(0, 3))
     .toEqual([0, 0, 0]);
-  // ResizeObserver can repaint after the pointer frame; the projected row must survive it.
   await page.waitForTimeout(200);
   expect((await readCellPixel(surface, ghostCell.x, ghostCell.y)).slice(0, 3)).toEqual([0, 0, 0]);
   expect(restingPixel.slice(0, 3)).not.toEqual([0, 0, 0]);

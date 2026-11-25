@@ -12,8 +12,6 @@ test('production adapters discover, edit, reconnect and share a real Canvas page
   try {
     const old = await startBroker({ config: f.config, version: '0.0.1' });
     cleanup.push(() => old.stop());
-    // Route only the fixed discovery address to this test's isolated broker.
-    // The actual discovery handler, page WebSocket, stdio and HTTP calls run unchanged.
     await page.route('http://127.0.0.1:9494/discover', async (route) => {
       const running = await inspectBroker(f.config, { control: true }).catch(() => null);
       if (!running) { await route.fulfill({ status: 503, body: 'Bridge restarting' }); return; }
@@ -48,7 +46,7 @@ test('production adapters discover, edit, reconnect and share a real Canvas page
 
     const crashed = await f.running();
     process.kill(crashed.health.pid, 'SIGKILL');
-    await read(); // Starts a replacement; does not replay a write.
+    await read();
     await expect.poll(async () => (await f.health()).pageReady, { timeout: 15_000 }).toBe(true);
     expect((await f.health()).instanceId).not.toBe(crashed.health.instanceId);
     expect((await read()).structuredContent.content).toContain('Independent bridge 架构');

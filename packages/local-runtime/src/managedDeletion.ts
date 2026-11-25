@@ -29,7 +29,6 @@ export const sameManagedFile = (a: ManagedFileProof | null, b: ManagedFileProof 
         (key) => a[key] === b[key]
       );
 
-/** A no-follow identity and byte snapshot, including malformed native files. */
 export async function inspectManagedFile(path: string): Promise<ManagedFileProof | null> {
   const before = await lstat(path, { bigint: true }).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') return null;
@@ -108,7 +107,6 @@ export async function stageManagedDeletion(entry: SessionDeletion) {
     throw new Error('Canvas changed while moving; staged content was preserved.');
 }
 
-/** Startup/cancellation rolls back prepared deletion without clobbering a replacement. */
 export async function restoreManagedDeletion(entry: SessionDeletion) {
   const expected = readManagedFileProof(entry.proof),
     staged = await inspectManagedFile(entry.stagedPath);
@@ -124,7 +122,6 @@ export async function restoreManagedDeletion(entry: SessionDeletion) {
   await syncDirectory(dirname(entry.stagedPath));
 }
 
-/** Only a committed, identified staging file can be unlinked. Never touch a replacement at path. */
 export async function finishManagedDeletion(entry: SessionDeletion) {
   const staged = await inspectManagedFile(entry.stagedPath);
   if (staged) {

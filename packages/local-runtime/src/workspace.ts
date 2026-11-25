@@ -6,7 +6,6 @@ import { parseCanvasDocument } from '@chardesk/editor-core/documentText';
 import { DocumentSerializer } from './documentSerialization.ts';
 import { OperationCoordinator, type OperationContext, type OperationTicket } from './operations.ts';
 
-/** Host-owned file catalog; document, interaction and history live in the shared Session. */
 export class TerminalWorkspace {
   readonly model: TerminalCanvas;
   readonly #files: CanvasFile[];
@@ -96,7 +95,6 @@ export class TerminalWorkspace {
       return this.commitOpen(file, ticket);
     });
   }
-  /** Resource registration is reversible preparation; activation has a separate final commit. */
   async prepareFile(input: string, ticket: OperationTicket) {
     const path = await resolveCanvasFilePath(input);
     if (this.#reserved.has(path)) throw new Error('This path is reserved for workspace storage.');
@@ -109,7 +107,6 @@ export class TerminalWorkspace {
       const document = loaded.model.documents.getDocumentDraft()!;
       if (this.model.documents.getDocument(document.id))
         document.id = randomUUID();
-      // Publish the catalog before Session observers see the new active document.
       loaded.file.address = { documentId: document.id, pageId: document.activePageId };
       this.#files.push(loaded.file);
       try {
@@ -202,7 +199,6 @@ export class TerminalWorkspace {
           : observation.state,
     };
   }
-  /** Explicit reload is serialized with saving, validates before mutation and retains page views. */
   reloadFile(file = this.requireActive(), preservedLocalVersion?: string, context?: OperationContext) {
     return this.operations.run(context, (ticket) => this.#reloadFile(file, preservedLocalVersion, { ticket }));
   }
@@ -263,7 +259,6 @@ export class TerminalWorkspace {
   async settleSaves() {
     await Promise.allSettled([...this.#saves.values()]);
   }
-  /** Capture binding and Y.Doc incarnation before preparing an asynchronous operation. */
   guardFile(ticket: OperationTicket, file: CanvasFile, retired: () => boolean = () => false) {
     const address = file.address;
     const document = address && this.model.documents.getCollaborationDocument(address.documentId);
@@ -310,7 +305,6 @@ export class TerminalWorkspace {
     const copy = new CanvasFile(path, original.title, null);
     copy.address = original.address;
     copy.writeGuard = assertCurrent;
-    // Writing a candidate is not yet a change to the live file binding or baseline.
     const saving = copy.save(this.model, this.#serializer, { markSaved: false });
     this.#saves.set(copy, saving);
     try {
@@ -328,7 +322,6 @@ export class TerminalWorkspace {
       copy.attach(this.model, this.#serializer);
     }));
   }
-  /** Installs a validated recovery snapshot without changing the original disk file. */
   addRecovered(
     file: CanvasFile,
     source: string,

@@ -1,5 +1,23 @@
+import type { CellPlaneOperation } from '@chardesk/cell-plane';
+
 export type AgentIdentity = { id: string; name: string };
-/** Claimed identity, not authentication. Never infer people from socket counts. */
+type CanvasActivityTarget = Readonly<{
+  canvasId: string;
+  documentId: string;
+  pageId: string;
+  version: string;
+  agent: Readonly<AgentIdentity>;
+  bounds: Readonly<{ x: number; y: number; width: number; height: number }>;
+}>;
+export type CanvasMutationActivityEvent = CanvasActivityTarget &
+  Readonly<{
+    kind: 'write' | 'render' | 'erase' | 'fill';
+    before: CellPlaneOperation;
+    after: CellPlaneOperation;
+    writtenCells: number;
+  }>;
+export type CanvasActivityEvent =
+  (CanvasActivityTarget & Readonly<{ kind: 'read' }>) | CanvasMutationActivityEvent;
 export function parseAgentIdentity(value: unknown): AgentIdentity | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -68,13 +86,14 @@ export interface AgentInboxStorage {
   list(canvasId: string, read: boolean, limit: number, offset: number): CanvasAgentActivity[];
   count(canvasId: string, read: boolean): number;
   markRead(canvasId: string, seen: readonly ActivityReceipt[]): void;
+  markAllRead(canvasId: string): void;
   close(): void;
 }
 
-/** Advisory inbox. A failed notification must never turn a committed Canvas edit into a failed call. */
 export class CanvasAgents {
   #store?: AgentInboxStorage;
   #listeners = new Set<() => void>();
+  #activityListeners = new Set<(event: CanvasActivityEvent) => void>();
   #disposed = false;
   error?: string;
   constructor(
@@ -93,6 +112,25 @@ export class CanvasAgents {
     return () => {
       this.#listeners.delete(listener);
     };
+  }
+  subscribeActivity(listener: (event: CanvasActivityEvent) => void) {
+    this.#activityListeners.add(listener);
+    return () => {
+      this.#activityListeners.delete(listener);
+    };
+  }
+  get hasActivityListeners() {
+    return this.#activityListeners.size > 0;
+  }
+  publishActivity(event: CanvasActivityEvent) {
+    if (this.#disposed) return;
+    for (const listener of this.#activityListeners) {
+      try {
+        listener(event);
+      } catch {
+        /* empty */
+      }
+    }
   }
   #emit() {
     for (const listener of this.#listeners) listener();
@@ -155,10 +193,23 @@ export class CanvasAgents {
     if (saved) this.#emit();
     return saved;
   }
+  markAllRead(canvasId: string) {
+    const saved = this.#access(
+      (store) => {
+        store.markAllRead(canvasId);
+        return true;
+      },
+      false,
+      true
+    );
+    if (saved) this.#emit();
+    return saved;
+  }
   dispose() {
     if (this.#disposed) return;
     this.#disposed = true;
     this.#listeners.clear();
+    this.#activityListeners.clear();
     try {
       this.#store?.close();
     } catch (error) {

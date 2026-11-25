@@ -1,4 +1,3 @@
-/** Apply a Cell UI reorder command to app-owned list data. */
 export function reorderCellItems<T extends Readonly<{ id: string }>>(
   items: readonly T[], sourceId: string, toIndex: number,
 ): readonly T[] {
