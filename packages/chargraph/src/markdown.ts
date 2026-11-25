@@ -371,6 +371,22 @@ const padCell = (
   ];
 };
 
+const fitTableColumns = (naturalWidths: number[], widthLimit: number | undefined) => {
+  if (!widthLimit || !naturalWidths.length) return naturalWidths;
+  const spacing = naturalWidths.length * 4 - 2;
+  const minimum = naturalWidths.reduce((sum, width) => sum + Math.min(2, width), 0);
+  let remaining = Math.max(minimum, Math.floor(widthLimit) - spacing);
+  const columns = naturalWidths.map((width, index) => ({ width, index }))
+    .sort((left, right) => left.width - right.width);
+  const widths = [...naturalWidths];
+  columns.forEach(({ width, index }, order) => {
+    const share = Math.floor(remaining / (columns.length - order));
+    widths[index] = Math.min(width, Math.max(2, share));
+    remaining -= widths[index]!;
+  });
+  return widths;
+};
+
 const renderTable = async (
   token: Tokens.Table,
   range: CharGraphSourceRange,
@@ -379,9 +395,10 @@ const renderTable = async (
   if (!context.rules.table) return rawFragment(token.raw, range);
   const rows = [token.header, ...token.rows];
   let cursor = range.from;
-  const renderedRows: CharGraphFragment[][][] = [];
+  const cellLines: CharGraphFragment[][][][] = [];
+  const naturalWidths = Array<number>(token.header.length).fill(1);
   for (const row of rows) {
-    const renderedRow: CharGraphFragment[][] = [];
+    const renderedRow: CharGraphFragment[][][] = [];
     for (const cell of row) {
       const rendered = await renderInline(
         cell.tokens,
@@ -391,29 +408,40 @@ const renderTable = async (
         cursor
       );
       cursor = rendered.cursor;
-      renderedRow.push(rendered.fragments);
+      const lines = splitLines(rendered.fragments);
+      const column = renderedRow.length;
+      naturalWidths[column] = Math.max(
+        naturalWidths[column] ?? 1,
+        ...lines.map((line) => getTextCellWidth(textOf(line)))
+      );
+      renderedRow.push(lines);
     }
-    renderedRows.push(renderedRow);
+    cellLines.push(renderedRow);
   }
-  const columnCount = Math.max(token.header.length, ...renderedRows.map((row) => row.length));
-  const widths = Array.from({ length: columnCount }, (_, column) => Math.max(
-    1,
-    ...renderedRows.map((row) => getTextCellWidth(textOf(row[column] ?? [])))
-  ));
+  const widths = fitTableColumns(naturalWidths, context.proseWrapWidth);
   const lines: CharGraphFragment[][] = [];
-  renderedRows.forEach((row, rowIndex) => {
-    const line: CharGraphFragment[] = [];
-    widths.forEach((width, column) => {
-      if (column > 0) line.push(fragment("  ", {}, range));
-      const cell = row[column] ?? [];
-      const origin = cell.find((item) => item.origin)?.origin ?? range;
-      const padded = padCell(cell, width, token.align[column] ?? null, origin);
-      line.push(...(rowIndex === 0
-        ? withStyle(padded, context.styles["table-header"])
-        : padded));
+  cellLines.forEach((row, rowIndex) => {
+    const wrapped = row.map((cell, column) => {
+      const width = widths[column]!;
+      return naturalWidths[column]! <= width ? cell : cell.flatMap((line) =>
+        getTextCellWidth(textOf(line)) > width ? splitLines(wrapMarkdownProse(line, width)) : [line]
+      );
     });
-    lines.push(line);
-    if (rowIndex < renderedRows.length - 1) {
+    const height = Math.max(1, ...wrapped.map((cell) => cell.length));
+    for (let rowLine = 0; rowLine < height; rowLine++) {
+      const line: CharGraphFragment[] = [];
+      widths.forEach((width, column) => {
+        if (column > 0) line.push(fragment("  ", {}, range));
+        const cell = wrapped[column]?.[rowLine] ?? [];
+        const origin = cell.find((item) => item.origin)?.origin ?? range;
+        const padded = padCell(cell, width, token.align[column] ?? null, origin);
+        line.push(...(rowIndex === 0
+          ? withStyle(padded, context.styles["table-header"])
+          : padded));
+      });
+      lines.push(line);
+    }
+    if (rowIndex < cellLines.length - 1) {
       const separator: CharGraphFragment[] = [];
       widths.forEach((width, column) => {
         if (column > 0) separator.push(fragment("  ", {}, range));

@@ -73,13 +73,25 @@ describe("renderMarkdown", () => {
     expect(lines[code]).not.toContain("resume 和");
   });
 
-  it("leaves code and tables untouched when prose wrapping is enabled", async () => {
+  it("wraps wide tables within the Markdown width while preserving code and cell styling", async () => {
     const source = [
-      "```text", "x".repeat(90), "```", "", "| Heading | Value |", "| --- | --- |", `| ${"x".repeat(90)} | item |`,
+      "```text", "x".repeat(90), "```", "", "| Skill 的分支 | 具体借鉴了什么 |", "| --- | --- |",
+      `| **找一批 ETF** | ${"确定候选范围 → 规范化条件 → 筛选 → 核验结果。".repeat(4)} [Morningstar](https://example.com) 👩‍💻 |`,
+      "| 比较已知几只 | 先判断是否可比。 |",
     ].join("\n");
-    const plain = await renderMarkdown(source);
-    const wrapped = await renderMarkdown(source, { proseWrapWidth: 80 });
-    expect(getCharGraphText(wrapped)).toBe(getCharGraphText(plain));
+    const options = { styles: { strong: { attrs: { bold: true as const } } } };
+    const plain = getCharGraphText(await renderMarkdown(source, options)).split("\n");
+    const wrapped = await renderMarkdown(source, { ...options, proseWrapWidth: 80 });
+    const lines = getCharGraphText(wrapped).split("\n");
+    expect(lines[0]).toBe(plain[0]);
+    expect(layoutCharDeskTextRuns([{ text: plain[2]! }]).width).toBeGreaterThan(80);
+    expect(lines.slice(2).map(line => layoutCharDeskTextRuns([{ text: line }]).width))
+      .toEqual(Array(lines.length - 2).fill(80));
+    expect(lines.filter(line => line.includes("─"))).toHaveLength(1);
+    expect(lines.at(-1)).toContain("比较已知几只");
+    expect(wrapped.fragments.find(part => part.text === "找一批 ETF")?.attrs?.bold).toBe(true);
+    expect(wrapped.fragments.find(part => part.text === "Morningstar")?.href).toBe("https://example.com");
+    expect(getCharGraphText(wrapped)).toContain("👩‍💻");
   });
 
   it("splits an overlong Latin word only at a cell boundary", async () => {

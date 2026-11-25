@@ -89,3 +89,38 @@ test("Web clipboard availability and preparation stay bounded for billion-row ra
     await host.dispose();
   }
 });
+
+test("Web Markdown paste fits a CJK table to the configured width and keeps links", async () => {
+  const host = createApplicationEditorHost();
+  const source = [
+    "| Skill 的分支 | 具体借鉴了什么 |",
+    "|---|---|",
+    `| **找一批 ETF** | ${"确定候选范围 → 规范化条件 → 筛选 → 核验结果。".repeat(4)} [参考链接](https://example.com) |`,
+    "| **比较已知几只** | 先看投资敞口和基准，再查收益和风险。 |",
+  ].join("\n");
+  try {
+    const { canvas, textRendering } = host;
+    canvas.commands.grid.replace([]);
+    const paste = () => canvas.commands.selection.paste({
+      eventDataTransfer: {
+        getData: (type: string) => type === "text/plain" ? source : "",
+      } as DataTransfer,
+    });
+    for (const width of [80, 60]) {
+      textRendering.setProfile({ ...textRendering.getProfile(), markdownWrapWidth: width });
+      canvas.commands.staticGrid.setActiveCell({ x: 0, y: 0 });
+      expect(await paste()).toMatchObject({ status: "applied", changed: true });
+      const reader = canvas.getState().contentSurface.reader;
+      const bounds = reader.getContentBounds();
+      expect(bounds?.width).toBeLessThanOrEqual(width);
+      expect(bounds?.height).toBeGreaterThan(5);
+      expect([...reader.materialize().values()].some(cell => cell.href === "https://example.com")).toBe(true);
+      canvas.commands.history.undo();
+    }
+    textRendering.setProfile({ ...textRendering.getProfile(), markdownWrapEnabled: false });
+    expect(await paste()).toMatchObject({ status: "applied", changed: true });
+    expect(canvas.getState().contentSurface.reader.getContentBounds()?.width).toBeGreaterThan(80);
+  } finally {
+    await host.dispose();
+  }
+});
