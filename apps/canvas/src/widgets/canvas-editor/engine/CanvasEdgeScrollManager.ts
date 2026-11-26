@@ -1,10 +1,10 @@
 import { CanvasEdgeScroll } from '@chardesk/editor-core/interaction/edgeScroll';
 import type { CanvasCameraManager } from './CanvasCameraManager';
-import { CANVAS_FRAME_INVALIDATION, type CanvasFrameScheduler } from './FrameScheduler';
+import { CANVAS_FRAME_INVALIDATION, type CanvasFrameQueue } from './FrameScheduler';
 export { EDGE_SCROLL_DELAY_MS } from '@chardesk/editor-core/interaction/edgeScroll';
 
 export class CanvasEdgeScrollManager extends CanvasEdgeScroll {
-  constructor(scheduler: CanvasFrameScheduler, camera: CanvasCameraManager) {
+  constructor(scheduler: CanvasFrameQueue, camera: CanvasCameraManager) {
     super(
       {
         request: (tick) =>

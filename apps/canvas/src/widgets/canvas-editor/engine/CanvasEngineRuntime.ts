@@ -1,4 +1,4 @@
-import { CanvasFrameScheduler } from "./FrameScheduler";
+import { CanvasFrameScheduler, type CanvasFrameQueue } from "./FrameScheduler";
 import {
   CanvasCameraManager,
   type CanvasCameraPort,
@@ -11,7 +11,7 @@ type CanvasEngineManager = {
 };
 
 export class CanvasEngineRuntime {
-  readonly frameScheduler: CanvasFrameScheduler;
+  readonly frameScheduler: CanvasFrameQueue;
   readonly renderActivity: CanvasRenderActivity;
   readonly renderExperience: CanvasRenderExperience;
   readonly camera: CanvasCameraManager;
@@ -22,7 +22,7 @@ export class CanvasEngineRuntime {
 
   constructor(
     cameraPort: CanvasCameraPort,
-    frameScheduler = new CanvasFrameScheduler()
+    frameScheduler: CanvasFrameQueue = new CanvasFrameScheduler()
   ) {
     this.frameScheduler = frameScheduler;
     this.renderActivity = new CanvasRenderActivity();

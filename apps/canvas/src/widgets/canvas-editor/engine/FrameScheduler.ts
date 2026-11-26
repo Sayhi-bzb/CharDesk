@@ -65,23 +65,57 @@ const getDefaultAnimationFramePort = (): AnimationFramePort => ({
   now: () => performance.now(),
 });
 
+const reportFrameError = (error: unknown) => {
+  if (typeof globalThis.reportError === "function") globalThis.reportError(error);
+  else console.error(error);
+};
+
 export class CanvasFrameScheduler {
   private readonly port: AnimationFramePort;
   private readonly callbacks = new Map<string, CanvasFrameTask>();
   private activeCallbacks: Map<string, CanvasFrameTask> | null = null;
   private activePhase: CanvasFramePhase | null = null;
   private readonly frameBudgetMs: number;
+  private readonly reportError: (error: unknown) => void;
+  private readonly resumeListeners = new Set<() => void>();
   private frameHandle: number | null = null;
+  private frameGeneration = 0;
+  private paused = false;
   private disposed = false;
   private deferredFrames = 0;
   private lastWorkDurationMs = 0;
 
   constructor(
     port: AnimationFramePort = getDefaultAnimationFramePort(),
-    options: { frameBudgetMs?: number } = {}
+    options: { frameBudgetMs?: number; reportError?: (error: unknown) => void } = {}
   ) {
     this.port = port;
     this.frameBudgetMs = options.frameBudgetMs ?? 8;
+    this.reportError = options.reportError ?? reportFrameError;
+  }
+
+  setPaused(paused: boolean): void {
+    if (this.disposed || this.paused === paused) return;
+    this.paused = paused;
+    if (paused) {
+      this.cancelScheduledFrame();
+      return;
+    }
+    this.scheduleFrame();
+    const errors: unknown[] = [];
+    for (const listener of this.resumeListeners) {
+      try {
+        listener();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    errors.forEach((error) => this.reportError(error));
+  }
+
+  subscribeResume(listener: () => void): () => void {
+    this.resumeListeners.add(listener);
+    return () => { this.resumeListeners.delete(listener); };
   }
 
   request(
@@ -126,12 +160,23 @@ export class CanvasFrameScheduler {
     if (
       this.frameHandle !== null ||
       this.activeCallbacks !== null ||
+      this.callbacks.size === 0 ||
+      this.paused ||
       this.disposed
     ) return;
+    const generation = ++this.frameGeneration;
     this.frameHandle = this.port.requestAnimationFrame((timestamp) => {
+      if (generation !== this.frameGeneration) return;
       this.frameHandle = null;
       this.run(timestamp);
     });
+  }
+
+  private cancelScheduledFrame(): void {
+    if (this.frameHandle === null) return;
+    this.port.cancelAnimationFrame(this.frameHandle);
+    this.frameHandle = null;
+    this.frameGeneration += 1;
   }
 
   now(): number {
@@ -146,15 +191,14 @@ export class CanvasFrameScheduler {
       (this.activeCallbacks?.size ?? 0) !== 0 ||
       this.frameHandle === null
     ) return;
-    this.port.cancelAnimationFrame(this.frameHandle);
-    this.frameHandle = null;
+    this.cancelScheduledFrame();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    if (this.frameHandle !== null) this.port.cancelAnimationFrame(this.frameHandle);
-    this.frameHandle = null;
+    this.cancelScheduledFrame();
+    this.resumeListeners.clear();
     this.callbacks.clear();
     this.activeCallbacks?.clear();
     this.activeCallbacks = null;
@@ -167,10 +211,11 @@ export class CanvasFrameScheduler {
     this.activeCallbacks = activeCallbacks;
     this.callbacks.clear();
     let completedTasks = 0;
+    const errors: unknown[] = [];
     while (activeCallbacks.size > 0) {
       if (
-        completedTasks > 0 &&
-        this.port.now() - startedAt >= this.frameBudgetMs
+        this.paused ||
+        (completedTasks > 0 && this.port.now() - startedAt >= this.frameBudgetMs)
       ) {
         this.deferredFrames += 1;
         for (const [pendingKey, pendingTask] of activeCallbacks) {
@@ -196,33 +241,45 @@ export class CanvasFrameScheduler {
       )[0]!;
       activeCallbacks.delete(key);
       this.activePhase = task.phase;
-      task.callback(timestamp, task.invalidation);
+      try {
+        task.callback(timestamp, task.invalidation);
+      } catch (error) {
+        errors.push(error);
+      }
       completedTasks += 1;
     }
     this.activePhase = null;
     this.activeCallbacks = null;
     this.lastWorkDurationMs = this.port.now() - startedAt;
-    if (this.callbacks.size > 0) this.scheduleFrame();
+    this.scheduleFrame();
+    errors.forEach((error) => this.reportError(error));
   }
 }
 
-export class CanvasScopedFrameScheduler extends CanvasFrameScheduler {
+export type CanvasFrameQueue = Pick<
+  CanvasFrameScheduler,
+  "request" | "cancel" | "now" | "subscribeResume" | "dispose"
+>;
+
+export class CanvasScopedFrameScheduler implements CanvasFrameQueue {
   private readonly parent: CanvasFrameScheduler;
   private readonly scope: string;
   private readonly pendingKeys = new Set<string>();
+  private readonly subscriptions = new Set<() => void>();
+  private disposed = false;
 
   constructor(parent: CanvasFrameScheduler, scope: string) {
-    super();
     this.parent = parent;
     this.scope = scope;
   }
 
-  override request(
+  request(
     key: string,
     invalidation: CanvasFrameInvalidation,
     callback: CanvasFrameCallback,
     options: CanvasFrameRequestOptions = {}
   ): void {
+    if (this.disposed) return;
     const scopedKey = `${this.scope}:${key}`;
     this.pendingKeys.add(scopedKey);
     this.parent.request(
@@ -236,19 +293,32 @@ export class CanvasScopedFrameScheduler extends CanvasFrameScheduler {
     );
   }
 
-  override now(): number {
+  now(): number {
     return this.parent.now();
   }
 
-  override cancel(key: string): void {
+  subscribeResume(listener: () => void): () => void {
+    if (this.disposed) return () => undefined;
+    const unsubscribe = this.parent.subscribeResume(() => listener());
+    this.subscriptions.add(unsubscribe);
+    return () => {
+      unsubscribe();
+      this.subscriptions.delete(unsubscribe);
+    };
+  }
+
+  cancel(key: string): void {
     const scopedKey = `${this.scope}:${key}`;
     this.pendingKeys.delete(scopedKey);
     this.parent.cancel(scopedKey);
   }
 
-  override dispose(): void {
+  dispose(): void {
+    this.disposed = true;
     this.pendingKeys.forEach((key) => this.parent.cancel(key));
     this.pendingKeys.clear();
+    this.subscriptions.forEach((unsubscribe) => unsubscribe());
+    this.subscriptions.clear();
   }
 }
 
@@ -258,7 +328,7 @@ type RafScheduler = {
 };
 
 export const createFrameSchedulerRafAdapter = (
-  scheduler: CanvasFrameScheduler,
+  scheduler: CanvasFrameQueue,
   scope: string,
   invalidation: CanvasFrameInvalidation
 ): RafScheduler => {

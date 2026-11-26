@@ -6,7 +6,7 @@ import { createViewportInteractionController } from "../hooks/interaction/viewpo
 import {
   CANVAS_FRAME_INVALIDATION,
   createFrameSchedulerRafAdapter,
-  type CanvasFrameScheduler,
+  type CanvasFrameQueue,
 } from "./FrameScheduler";
 
 export type CanvasCameraPort = {
@@ -44,7 +44,7 @@ const interpolateViewport = (
 
 export class CanvasCameraManager {
   private readonly port: CanvasCameraPort;
-  private readonly frameScheduler: CanvasFrameScheduler;
+  private readonly frameScheduler: CanvasFrameQueue;
   private readonly onViewportActivity: () => void;
   private readonly viewportInteraction: ReturnType<
     typeof createViewportInteractionController
@@ -54,7 +54,7 @@ export class CanvasCameraManager {
   private disposed = false;
 
   constructor(
-    frameScheduler: CanvasFrameScheduler,
+    frameScheduler: CanvasFrameQueue,
     port: CanvasCameraPort,
     onViewportActivity: () => void = () => undefined
   ) {

@@ -199,6 +199,50 @@ test('modal Quit honors rebinding, disabling and sequence dispatch without leaki
   }
 });
 
+test('unbound Ctrl+C shows the current Quit shortcut in the footer without closing a dialog', async () => {
+  const f = await fixture('darwin', false);
+  try {
+    f.surface.settings.set('language', 'en');
+    f.surface.activateDock('settings');
+    const panel = f.surface.panel;
+    f.setup.mockInput.pressKey('c', { ctrl: true });
+    await f.setup.renderOnce();
+    expect(f.setup.captureCharFrame().split('\n')[f.surface.footerBounds.y]).toContain(
+      'Ctrl+Q to quit'
+    );
+    expect(f.surface.panel).toBe(panel);
+    expect(f.quits).toBe(0);
+
+    f.model.editor.keymap.setUserBindings('terminal.quit', [['F12']]);
+    f.surface.settings.set('language', 'zh-CN');
+    f.setup.mockInput.pressKey('c', { ctrl: true });
+    expect(f.surface.feedbackControl?.message).toBe('F12 退出');
+    f.setup.mockInput.pressKey('F12');
+    expect(f.quits).toBe(1);
+  } finally {
+    await f.dispose();
+  }
+});
+
+test('Ctrl+C copies a selection where bound and hints at Quit when Copy is unavailable', async () => {
+  const f = await fixture('linux', true, 'A界B');
+  try {
+    f.surface.settings.set('language', 'en');
+    f.surface.setTool('edit');
+    f.setup.mockInput.pressKey('c', { ctrl: true });
+    expect(f.surface.feedbackControl?.message).toBe('Ctrl+Q to quit');
+
+    f.model.commands.selectAll();
+    f.setup.mockInput.pressKey('c', { ctrl: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(f.text).toBe('A界B');
+    expect(f.writes).toBe(1);
+    expect(f.surface.feedbackControl?.message).toBe('Copied');
+  } finally {
+    await f.dispose();
+  }
+});
+
 for (const kitty of [false, true]) {
   test(`default Hand ignores text; Edit accepts lower/upper-case tool letters (Kitty ${kitty})`, async () => {
     const f = await fixture('darwin', kitty);

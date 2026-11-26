@@ -447,6 +447,7 @@ export const zhCN: Readonly<Record<string, string>> = {
   'Next match': '下一处匹配',
   'Close canvas': '关闭画布',
   Quit: '退出',
+  '{0} to quit': '{0} 退出',
   'Delete backward': '向前删除',
   'Delete forward': '向后删除',
   Newline: '换行',

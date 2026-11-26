@@ -47,6 +47,9 @@ export class TerminalSettingsDialog {
   get isOpen() {
     return this.#panel !== null && this.surface.panel === this.#panel;
   }
+  get recordingShortcut() {
+    return this.isOpen && this.#shortcuts.recording;
+  }
   #definitions() {
     return TERMINAL_SETTING_DEFINITIONS.filter(
       (def) => def.section === sections[this.#section]!.id

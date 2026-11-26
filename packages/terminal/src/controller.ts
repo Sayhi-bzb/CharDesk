@@ -596,6 +596,25 @@ export function attachControls(
     }
     dockClosingKey = null;
     const binding = bindings.resolveEvent(key);
+    if (
+      !binding &&
+      key.name === 'c' &&
+      key.ctrl &&
+      !key.shift &&
+      !key.meta &&
+      !key.option &&
+      !key.super &&
+      !surface.closing &&
+      !settingsDialog.recordingShortcut
+    ) {
+      const quitShortcut = surface.shortcuts.quit;
+      if (quitShortcut.keys.length) {
+        keymap.clearPendingSequence();
+        surface.feedback.show(() => surface.t`${quitShortcut.label} to quit`);
+        consume();
+        return;
+      }
+    }
     if (!surface.input.admit('key', binding?.id.replace(/^terminal\./, '') ?? key.name)) {
       consume();
       return;

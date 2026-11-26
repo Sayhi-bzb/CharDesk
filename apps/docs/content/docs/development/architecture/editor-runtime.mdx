@@ -33,6 +33,15 @@ view ID. Canvas interaction ports are also registered by view ID; capture-phase
 activation selects the port before the workspace switches session, so the first
 gesture is routed through the same pane that received it.
 
+The workspace [frame lifecycle adapter](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/src/widgets/canvas-editor/engine/canvasFrameLifecycle.ts)
+pauses browser frame requests while the document is hidden or frozen. The scheduler
+keeps keyed work coalesced and reports task failures after servicing the queue.
+When the document resumes or a 2D context is restored, the affected view rebuilds
+all layers from current editor state. A paint exception gets one automatic full
+redraw before waiting for a new invalidation. The
+[browser recovery tests](https://github.com/Sayhi-bzb/CharDesk/blob/main/apps/canvas/e2e/canvas-recovery.spec.ts)
+exercise these paths.
+
 Continuous viewport input uses the camera interaction queue. Pan, wheel, and
 pinch publish at most one transient viewport per scheduled frame; pinch keeps
 the latest absolute target rather than notifying the live viewport for every

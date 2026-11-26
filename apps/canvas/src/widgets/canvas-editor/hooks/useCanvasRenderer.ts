@@ -146,8 +146,8 @@ export const useCanvasRenderer = (
   hoveredLink: CanvasLinkHit | null,
   canvasAppearance: CanvasAppearanceSnapshot,
   cellContext: CanvasCellPresentationContext,
-  requestRenderRef?: React.MutableRefObject<(() => void) | null>,
-  runtime?: CanvasEngineRuntime,
+  requestRenderRef: React.MutableRefObject<(() => void) | null> | undefined,
+  runtime: CanvasEngineRuntime,
   isPhone = false
 ) => {
   const { profile: fontProfile } = useCanvasFont();
@@ -213,12 +213,9 @@ export const useCanvasRenderer = (
   const cursorVisibleRef = useRef(true);
   const [renderManager] = useState(() => new CanvasRenderManager());
   const contentResolutionModeRef = useRef<CanvasContentResolutionMode>('full');
-  const fallbackViewportRef = useRef({ offset, zoom });
-  useEffect(() => {
-    fallbackViewportRef.current = { offset, zoom };
-  }, [offset, zoom]);
-  const manualRenderRafRef = useRef<number | null>(null);
-  const manualInvalidationRef = useRef<CanvasFrameInvalidation>(0);
+  const retryUsedRef = useRef(false);
+  const resetBackingStoresRef = useRef(false);
+  const lostSurfacesRef = useRef(new WeakSet<HTMLCanvasElement>());
   const observedContentRef = useRef<{
     reader: CanvasSurfaceReader;
     revision: number | null;
@@ -294,13 +291,13 @@ export const useCanvasRenderer = (
     cursorVisibleRef.current = true;
     const palette = visualTheme.canvas;
     const render = (invalidation: CanvasFrameInvalidation) => {
-      if (!size || !surfaceGeometry || size.width === 0 || size.height === 0) return;
-      const { offset, zoom } = runtime?.camera.getViewport() ?? fallbackViewportRef.current;
+      if (!size || !surfaceGeometry || size.width === 0 || size.height === 0) return false;
+      const { offset, zoom } = runtime.camera.getViewport();
       const frameStartedAt = performance.now();
       const renderedContentSource = contentReader;
 
       const dpr = window.devicePixelRatio || 1;
-      const viewportInteractionActive = runtime?.renderActivity.getMode() === 'viewport-interaction';
+      const viewportInteractionActive = runtime.renderActivity.getMode() === 'viewport-interaction';
       contentResolutionModeRef.current = resolveCanvasContentResolutionModeForInteraction({
         zoom,
         currentMode: contentResolutionModeRef.current,
@@ -364,7 +361,17 @@ export const useCanvasRenderer = (
 
       const bgCanvas = layers.content.current;
       const bgCtx = bgCanvas?.getContext('2d', { alpha: false });
-      if (renderBackground && bgCanvas && bgCtx && !suppressContentRendering) {
+      const scratchCanvas = layers.interaction.current;
+      const scratchCtx = scratchCanvas?.getContext('2d');
+      if (!bgCanvas || !scratchCanvas || !bgCtx || !scratchCtx ||
+        lostSurfacesRef.current.has(bgCanvas) || lostSurfacesRef.current.has(scratchCanvas) ||
+        bgCtx.isContextLost?.() || scratchCtx.isContextLost?.()) return false;
+      if (resetBackingStoresRef.current) {
+        bgCanvas.setAttribute('width', String(bgCanvas.width));
+        scratchCanvas.setAttribute('width', String(scratchCanvas.width));
+        resetBackingStoresRef.current = false;
+      }
+      if (renderBackground && !suppressContentRendering) {
         const drawVisibleGrid = showGrid && shouldDrawCanvasGrid(zoom);
         prepareCharDeskCanvasSurface(
           bgCanvas,
@@ -432,9 +439,7 @@ export const useCanvasRenderer = (
         renderedInvalidation |= CANVAS_FRAME_INVALIDATION.background;
       }
 
-      const scratchCanvas = layers.interaction.current;
-      const scratchCtx = scratchCanvas?.getContext('2d');
-      if (renderScratch && scratchCanvas && scratchCtx) {
+      if (renderScratch) {
         prepareCharDeskCanvasSurface(
           scratchCanvas,
           scratchCtx,
@@ -444,7 +449,6 @@ export const useCanvasRenderer = (
         );
         clipToSlidePage(scratchCtx);
         if (
-          bgCanvas &&
           contrastRangeActive &&
           cellPresentation.visual?.kind === 'range'
         ) {
@@ -471,9 +475,8 @@ export const useCanvasRenderer = (
         renderedInvalidation |= CANVAS_FRAME_INVALIDATION.scratch;
       }
 
-      const uiCanvas = scratchCanvas;
       const uiCtx = scratchCtx;
-      if (renderOverlay && uiCanvas && uiCtx) {
+      if (renderOverlay) {
         clipToSlidePage(uiCtx);
 
         if (
@@ -549,11 +552,12 @@ export const useCanvasRenderer = (
       }
       renderManager.commit(renderedInvalidation);
       if (CanvasRenderManager.includes(renderedInvalidation, 'background')) {
-        runtime?.renderExperience.recordDirectFrame(
+        runtime.renderExperience.recordDirectFrame(
           directGlyphs,
           performance.now() - frameStartedAt
         );
       }
+      return true;
     };
 
     const scheduleRender = (
@@ -561,38 +565,47 @@ export const useCanvasRenderer = (
       priority?: 'interaction'
     ) => {
       if (invalidation === 0) return;
-      if (runtime) {
-        runtime.frameScheduler.request(
-          "canvas-renderer",
-          invalidation,
-          (_timestamp, pendingInvalidation) => render(pendingInvalidation),
-          priority
-            ? { priority, phase: "render" }
-            : { phase: "render" }
-        );
-        return;
-      }
-      manualInvalidationRef.current |= invalidation;
-      if (manualRenderRafRef.current !== null) return;
-      manualRenderRafRef.current = requestAnimationFrame(() => {
-        manualRenderRafRef.current = null;
-        const pendingInvalidation = manualInvalidationRef.current;
-        manualInvalidationRef.current = 0;
-        render(pendingInvalidation);
-      });
+      runtime.frameScheduler.request(
+        "canvas-renderer",
+        invalidation,
+        (_timestamp, pendingInvalidation) => {
+          try {
+            const recovering = resetBackingStoresRef.current;
+            const needed = recovering ? renderManager.reset() : pendingInvalidation;
+            if (render(needed)) {
+              retryUsedRef.current = false;
+              if (recovering) scheduleCursorBlink();
+            }
+          } catch (error) {
+            clearCursorTimer();
+            resetBackingStoresRef.current = true;
+            const redraw = renderManager.reset();
+            if (!retryUsedRef.current) {
+              retryUsedRef.current = true;
+              scheduleRender(redraw);
+            }
+            throw error;
+          }
+        },
+        { priority, phase: "render" }
+      );
     };
     const clearCursorTimer = () => {
       if (cursorTimer === null) return;
       window.clearTimeout(cursorTimer);
       cursorTimer = null;
     };
+    const lostSurfaces = lostSurfacesRef.current;
+    const surfaces = [layers.content.current, layers.interaction.current];
     const scheduleCursorBlink = () => {
       clearCursorTimer();
       if (
         cellPresentation.visual?.kind !== 'terminal-cursor' ||
         !cellPresentation.visual.blink ||
         visualTheme.motion.reduced ||
-        document.visibilityState === 'hidden'
+        document.hidden ||
+        resetBackingStoresRef.current ||
+        surfaces.some((surface) => surface && lostSurfaces.has(surface))
       ) return;
       cursorTimer = window.setTimeout(() => {
         cursorTimer = null;
@@ -603,10 +616,12 @@ export const useCanvasRenderer = (
       }, DEFAULT_CHARDESK_CELL_CURSOR_BLINK_INTERVAL_MS);
     };
     const handleVisibilityChange = () => {
-      clearCursorTimer();
-      if (document.visibilityState === 'hidden') return;
+      if (document.hidden) clearCursorTimer();
+    };
+    const restorePresentation = () => {
+      retryUsedRef.current = false;
       cursorVisibleRef.current = true;
-      scheduleRender(CANVAS_FRAME_INVALIDATION.overlay, 'interaction');
+      scheduleRender(renderManager.reset(), 'interaction');
       scheduleCursorBlink();
     };
     const sharedViewportInputs = [
@@ -624,7 +639,6 @@ export const useCanvasRenderer = (
       : null;
     const observedContent = observedContentRef.current;
     if (
-      runtime &&
       observedContent?.reader === contentReader &&
       observedContent.revision !== null &&
       readerRevision !== null &&
@@ -693,7 +707,21 @@ export const useCanvasRenderer = (
     };
     fonts?.addEventListener('loadingdone', handleFontLoad);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    const unsubscribeActivity = runtime?.renderActivity.subscribe((mode, previous) => {
+    const onContextLost = (event: Event) => {
+      lostSurfaces.add(event.currentTarget as HTMLCanvasElement);
+      clearCursorTimer();
+      renderManager.reset();
+    };
+    const onContextRestored = (event: Event) => {
+      lostSurfaces.delete(event.currentTarget as HTMLCanvasElement);
+      restorePresentation();
+    };
+    for (const surface of surfaces) {
+      surface?.addEventListener('contextlost', onContextLost);
+      surface?.addEventListener('contextrestored', onContextRestored);
+    }
+    const unsubscribeResume = runtime.frameScheduler.subscribeResume(restorePresentation);
+    const unsubscribeActivity = runtime.renderActivity.subscribe((mode, previous) => {
       if (mode === "settled" && !disposed) {
         runtime.renderExperience.markSettling(previous);
         scheduleRender(CANVAS_FRAME_INVALIDATION.background);
@@ -705,18 +733,18 @@ export const useCanvasRenderer = (
     return () => {
       disposed = true;
       clearCursorTimer();
-      runtime?.frameScheduler.cancel("canvas-renderer");
-      if (manualRenderRafRef.current !== null) {
-        cancelAnimationFrame(manualRenderRafRef.current);
-        manualRenderRafRef.current = null;
-      }
-      manualInvalidationRef.current = 0;
+      runtime.frameScheduler.cancel("canvas-renderer");
       if (requestRenderRef?.current === requestManualRender) {
         requestRenderRef.current = null;
       }
       fonts?.removeEventListener('loadingdone', handleFontLoad);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      unsubscribeActivity?.();
+      for (const surface of surfaces) {
+        surface?.removeEventListener('contextlost', onContextLost);
+        surface?.removeEventListener('contextrestored', onContextRestored);
+      }
+      unsubscribeResume();
+      unsubscribeActivity();
     };
   }, [
     activeCanvasId,

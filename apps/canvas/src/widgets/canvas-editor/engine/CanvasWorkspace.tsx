@@ -19,6 +19,7 @@ import {
 } from '@/domains/canvas/public';
 import { CanvasEngineRuntime } from './CanvasEngineRuntime';
 import { CanvasFrameScheduler, CanvasScopedFrameScheduler } from './FrameScheduler';
+import { bindCanvasFrameLifecycle } from './canvasFrameLifecycle';
 
 export type CanvasViewId = 'primary' | 'secondary';
 
@@ -280,6 +281,7 @@ class CanvasViewRuntime {
 class CanvasWorkspaceRuntime {
   readonly views: Record<CanvasViewId, CanvasViewRuntime>;
   private readonly frameScheduler = new CanvasFrameScheduler();
+  bindFrameLifecycle = () => bindCanvasFrameLifecycle(this.frameScheduler);
   private readonly publishViewport: (sessionId: string, viewport: CanvasViewportState) => void;
   private readonly switchSession: (sessionId: string) => Promise<boolean>;
   private globalSessionId: string | null;
@@ -545,6 +547,7 @@ export function CanvasWorkspaceProvider({ children }: { children: ReactNode }) {
   }), [canvas.viewport, runtime]);
 
   useEffect(() => runtime.acquire(), [runtime]);
+  useEffect(() => runtime.bindFrameLifecycle(), [runtime]);
 
   useEffect(() => {
     if (splitEnabled) runtime.openSplit();

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CANVAS_FRAME_INVALIDATION,
   CanvasFrameScheduler,
+  CanvasScopedFrameScheduler,
   createFrameSchedulerRafAdapter,
 } from "./FrameScheduler";
 
@@ -228,6 +229,65 @@ describe("CanvasFrameScheduler", () => {
 
     expect(() => run()).not.toThrow();
     expect(afterDispose).not.toHaveBeenCalled();
+    expect(scheduler.getStats().pending).toBe(0);
+  });
+
+  it("isolates a view failure and continues work requested for the next frame", () => {
+    const { run, port } = createPort();
+    const reportError = vi.fn();
+    const scheduler = new CanvasFrameScheduler(port, { reportError });
+    const first = new CanvasScopedFrameScheduler(scheduler, "first");
+    const second = new CanvasScopedFrameScheduler(scheduler, "second");
+    const failure = new Error("Paint failed");
+    const nextFrame = vi.fn();
+    const sibling = vi.fn();
+
+    first.request("renderer", CANVAS_FRAME_INVALIDATION.background, () => {
+      first.request("renderer", CANVAS_FRAME_INVALIDATION.background, nextFrame, { phase: "render" });
+      throw failure;
+    }, { phase: "render" });
+    second.request("renderer", CANVAS_FRAME_INVALIDATION.background, sibling, { phase: "render" });
+    run();
+
+    expect(reportError).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(sibling).toHaveBeenCalledOnce();
+    expect(nextFrame).not.toHaveBeenCalled();
+    run();
+    expect(nextFrame).toHaveBeenCalledOnce();
+    expect(scheduler.getStats().pending).toBe(0);
+  });
+
+  it("retains coalesced work and rejects callbacks from before a pause", () => {
+    const { run, port } = createPort();
+    const scheduler = new CanvasFrameScheduler(port);
+    const view = new CanvasScopedFrameScheduler(scheduler, "view");
+    const resume = vi.fn();
+    const repaint = vi.fn();
+    view.subscribeResume(resume);
+
+    view.request("renderer", CANVAS_FRAME_INVALIDATION.background, vi.fn());
+    const staleFrame = port.requestAnimationFrame.mock.calls[0]![0];
+    scheduler.setPaused(true);
+    view.request("renderer", CANVAS_FRAME_INVALIDATION.overlay, repaint);
+    expect(port.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(7);
+    expect(port.requestAnimationFrame).toHaveBeenCalledOnce();
+
+    scheduler.setPaused(false);
+    scheduler.setPaused(false);
+    staleFrame(9);
+    expect(repaint).not.toHaveBeenCalled();
+    run();
+    expect(repaint).toHaveBeenCalledExactlyOnceWith(
+      10,
+      CANVAS_FRAME_INVALIDATION.background | CANVAS_FRAME_INVALIDATION.overlay
+    );
+    expect(resume).toHaveBeenCalledOnce();
+
+    scheduler.setPaused(true);
+    view.request("renderer", CANVAS_FRAME_INVALIDATION.background, repaint);
+    view.dispose();
+    scheduler.setPaused(false);
+    expect(resume).toHaveBeenCalledOnce();
     expect(scheduler.getStats().pending).toBe(0);
   });
 });
