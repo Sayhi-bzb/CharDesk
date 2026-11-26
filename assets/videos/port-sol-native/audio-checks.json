@@ -1,0 +1,28 @@
+{
+  "bpm": 118.86792452830188,
+  "channels": 2,
+  "sampleRate": 48000,
+  "duration": 42.4,
+  "peak": 0.5077868524742803,
+  "rms": 0.1,
+  "instruments": [
+    "kick",
+    "snare",
+    "hi-hat",
+    "bass",
+    "marimba",
+    "chords"
+  ],
+  "bars": 21,
+  "loopSeconds": 42.4,
+  "circularTails": true,
+  "boundaryDelta": [
+    0.001158347594206385,
+    0.0011316290119200193
+  ],
+  "arrangement": [
+    "continuous groove",
+    "lighter bridge crossings",
+    "last-bar pickup into first downbeat"
+  ]
+}

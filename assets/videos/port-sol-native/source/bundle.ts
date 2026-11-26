@@ -1,0 +1,73 @@
+import { readFile, copyFile, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const project = fileURLToPath(new URL('../', import.meta.url));
+const root = resolve(project, '../../..');
+const output = resolve(project, 'build');
+await mkdir(output, { recursive: true });
+await mkdir(resolve(project, 'png'), { recursive: true });
+const directory = resolve(root, 'packages/cli');
+const manifest = JSON.parse(await readFile(resolve(directory, 'package.json'), 'utf8'));
+const version =
+  process.env.CHARDESK_RELEASE_BUILD === '1' ? manifest.version : `${manifest.version}-dev`;
+const config = JSON.parse(await readFile(resolve(root, 'packages/cli/tsconfig.json'), 'utf8'));
+const result = await Bun.build({
+  entrypoints: [
+    resolve(directory, 'src/cli.ts'),
+    resolve(project, 'source/record.ts'),
+    resolve(directory, 'src/raster-worker.ts'),
+    resolve(root, 'packages/chargraph/src/layout/elk-worker.ts'),
+    resolve(root, 'packages/local-runtime/src/document-worker.ts'),
+  ],
+  target: 'node',
+  define: { __CHARDESK_VERSION__: JSON.stringify(version) },
+  splitting: true,
+  naming: '[name].[ext]',
+  outdir: output,
+  external: [
+    'bun:sqlite',
+    'quickjs-emscripten',
+    'ajv',
+    'jsonc-parser',
+    'd3-scale',
+    'elkjs',
+    'marked',
+    'marked-alert',
+    'open',
+    'saxes',
+    'shiki',
+    'temml',
+    'yaml',
+    '@opentui/core',
+    '@opentui/core/*',
+    '@napi-rs/canvas',
+    '@napi-rs/clipboard',
+    '@teddyzhu/clipboard',
+  ],
+  plugins: [
+    {
+      name: 'chardesk-workspace-sources',
+      setup(build) {
+        build.onResolve({ filter: /^(@chardesk\/|@\/)/ }, ({ path }) => {
+          if (path.startsWith('@chardesk/legacy-blackboard/'))
+            return {
+              path: resolve(root, 'packages/legacy-blackboard/src', path.split('/').at(-1) + '.ts'),
+            };
+          const candidate =
+            config.compilerOptions.paths[path]?.[0] ??
+            Object.entries(config.compilerOptions.paths).flatMap(([key, values]) => {
+              const prefix = key.endsWith('*') ? key.slice(0, -1) : null;
+              return prefix && path.startsWith(prefix)
+                ? [values[0]!.replace('*', path.slice(prefix.length))]
+                : [];
+            })[0];
+          if (!candidate) return;
+          return { path: Bun.resolveSync(resolve(root, candidate), root) };
+        });
+      },
+    },
+  ],
+});
+if (!result.success) throw new AggregateError(result.logs, 'CLI bundle failed');
+await copyFile(resolve(root,'packages/terminal/src/tachyonfx.wasm'),resolve(output, 'tachyonfx.wasm'));

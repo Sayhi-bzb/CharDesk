@@ -9,7 +9,7 @@ const repositoryRoot = path.resolve(appDirectory, "../..");
 
 export default defineConfig({
   base: "/chargraph/",
-  publicDir: path.join(repositoryRoot, "public"),
+  publicDir: path.join(appDirectory, "public"),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [

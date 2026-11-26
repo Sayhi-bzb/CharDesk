@@ -1,0 +1,499 @@
+{
+  "operations": [
+    {
+      "kind": "foundation",
+      "stage": 1,
+      "start": 0.4,
+      "effectUnits": 31,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:7",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 2,
+      "start": 1.1,
+      "effectUnits": 9,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:8",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 3,
+      "start": 2.2333333333333334,
+      "effectUnits": 9,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:9",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 4,
+      "start": 3.3666666666666667,
+      "effectUnits": 14,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:10",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 5,
+      "start": 4.5,
+      "effectUnits": 10,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:11",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 6,
+      "start": 5.633333333333334,
+      "effectUnits": 12,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:12",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 7,
+      "start": 6.766666666666667,
+      "effectUnits": 9,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:13",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 8,
+      "start": 7.9,
+      "effectUnits": 9,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:14",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 9,
+      "start": 9.033333333333333,
+      "effectUnits": 12,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:15",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 10,
+      "start": 10.166666666666666,
+      "effectUnits": 12,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:16",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 11,
+      "start": 11.3,
+      "effectUnits": 6,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:17",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 12,
+      "start": 11.6,
+      "effectUnits": 5,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:18",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 13,
+      "start": 11.9,
+      "effectUnits": 4,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:19",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 14,
+      "start": 12.2,
+      "effectUnits": 3,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:20",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 15,
+      "start": 12.5,
+      "effectUnits": 19,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:21",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 16,
+      "start": 12.8,
+      "effectUnits": 5,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:22",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 17,
+      "start": 13.1,
+      "effectUnits": 17,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:23",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 18,
+      "start": 13.4,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:24",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 19,
+      "start": 13.733333333333333,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:25",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 20,
+      "start": 14.066666666666666,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:26",
+      "persistence": "saved"
+    },
+    {
+      "kind": "bridge",
+      "stage": 21,
+      "start": 14.4,
+      "effectUnits": 18,
+      "agent": "bridge",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:27",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-buoy",
+      "stage": 22,
+      "start": 16.3,
+      "effectUnits": 4,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:28",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 23,
+      "start": 16.633333333333333,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:29",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-gull",
+      "stage": 24,
+      "start": 16.966666666666665,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:30",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-gull",
+      "stage": 25,
+      "start": 17.3,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:31",
+      "persistence": "saved"
+    },
+    {
+      "kind": "foundation",
+      "stage": 26,
+      "start": 18.9,
+      "effectUnits": 31,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:32",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 27,
+      "start": 19.6,
+      "effectUnits": 9,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:33",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 28,
+      "start": 20.733333333333334,
+      "effectUnits": 10,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:34",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 29,
+      "start": 21.866666666666667,
+      "effectUnits": 12,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:35",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 30,
+      "start": 23,
+      "effectUnits": 10,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:36",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 31,
+      "start": 24.133333333333333,
+      "effectUnits": 11,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:37",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 32,
+      "start": 25.266666666666666,
+      "effectUnits": 15,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:38",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 33,
+      "start": 26.4,
+      "effectUnits": 11,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:39",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 34,
+      "start": 27.533333333333335,
+      "effectUnits": 12,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:40",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 35,
+      "start": 27.833333333333332,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:41",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 36,
+      "start": 28.166666666666668,
+      "effectUnits": 0,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:41",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 37,
+      "start": 28.5,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:42",
+      "persistence": "saved"
+    },
+    {
+      "kind": "bridge",
+      "stage": 38,
+      "start": 28.833333333333332,
+      "effectUnits": 15,
+      "agent": "bridge",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:43",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-buoy",
+      "stage": 39,
+      "start": 30.733333333333334,
+      "effectUnits": 5,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:44",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 40,
+      "start": 31.066666666666666,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:45",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-gull",
+      "stage": 41,
+      "start": 31.4,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:46",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-gull",
+      "stage": 42,
+      "start": 31.733333333333334,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:47",
+      "persistence": "saved"
+    },
+    {
+      "kind": "foundation",
+      "stage": 43,
+      "start": 33.333333333333336,
+      "effectUnits": 15,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:48",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 44,
+      "start": 34.03333333333333,
+      "effectUnits": 16,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:49",
+      "persistence": "saved"
+    },
+    {
+      "kind": "building",
+      "stage": 45,
+      "start": 35.166666666666664,
+      "effectUnits": 8,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:50",
+      "persistence": "saved"
+    },
+    {
+      "kind": "detail",
+      "stage": 46,
+      "start": 36.3,
+      "effectUnits": 11,
+      "agent": "builder",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:51",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 47,
+      "start": 36.6,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:52",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 48,
+      "start": 36.93333333333333,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:53",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 49,
+      "start": 37.266666666666666,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:54",
+      "persistence": "saved"
+    },
+    {
+      "kind": "bridge",
+      "stage": 50,
+      "start": 37.6,
+      "effectUnits": 12,
+      "agent": "bridge",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:55",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-buoy",
+      "stage": 51,
+      "start": 39.5,
+      "effectUnits": 4,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:56",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-wave",
+      "stage": 52,
+      "start": 39.833333333333336,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:57",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-gull",
+      "stage": 53,
+      "start": 40.166666666666664,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:58",
+      "persistence": "saved"
+    },
+    {
+      "kind": "sea-gull",
+      "stage": 54,
+      "start": 40.5,
+      "effectUnits": 2,
+      "agent": "shore",
+      "version": "e070d773-ae51-4984-83da-17ccb7e4b9c4:59",
+      "persistence": "saved"
+    }
+  ],
+  "animationFrames": 720,
+  "recognizableFrames": 488,
+  "uniqueFrames": 674,
+  "duration": 42.4,
+  "firstHash": "8ca4c7da6c499594a612ea74d029a632fc403d73075ec7c2e7b53bc2bb74f98a",
+  "lastHash": "8ca4c7da6c499594a612ea74d029a632fc403d73075ec7c2e7b53bc2bb74f98a",
+  "threeForwardPans": true,
+  "nativeMutationEffects": true,
+  "canvasOnly": true
+}

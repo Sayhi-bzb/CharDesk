@@ -1,0 +1,366 @@
+{
+  "duration": 42.4,
+  "cameras": [
+    {
+      "mode": "hold",
+      "start": 0.4,
+      "duration": 15
+    },
+    {
+      "mode": "pan",
+      "start": 15.4,
+      "duration": 3.333333333333334
+    },
+    {
+      "mode": "hold",
+      "start": 18.733333333333334,
+      "duration": 11.099999999999998
+    },
+    {
+      "mode": "pan",
+      "start": 29.833333333333332,
+      "duration": 3.333333333333332
+    },
+    {
+      "mode": "hold",
+      "start": 33.166666666666664,
+      "duration": 5.433333333333337
+    },
+    {
+      "mode": "pan",
+      "start": 38.6,
+      "duration": 3.3333333333333286
+    },
+    {
+      "mode": "hold",
+      "start": 41.93333333333333,
+      "duration": 0
+    }
+  ],
+  "phases": [
+    {
+      "start": 0.4,
+      "kind": "foundation",
+      "stage": 1,
+      "reveal": 0.6666666666666666
+    },
+    {
+      "start": 1.1,
+      "kind": "building",
+      "stage": 2,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 2.2333333333333334,
+      "kind": "building",
+      "stage": 3,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 3.3666666666666667,
+      "kind": "building",
+      "stage": 4,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 4.5,
+      "kind": "building",
+      "stage": 5,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 5.633333333333334,
+      "kind": "building",
+      "stage": 6,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 6.766666666666667,
+      "kind": "building",
+      "stage": 7,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 7.9,
+      "kind": "building",
+      "stage": 8,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 9.033333333333333,
+      "kind": "building",
+      "stage": 9,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 10.166666666666666,
+      "kind": "building",
+      "stage": 10,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 11.3,
+      "kind": "detail",
+      "stage": 11,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 11.6,
+      "kind": "detail",
+      "stage": 12,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 11.9,
+      "kind": "detail",
+      "stage": 13,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 12.2,
+      "kind": "detail",
+      "stage": 14,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 12.5,
+      "kind": "detail",
+      "stage": 15,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 12.8,
+      "kind": "detail",
+      "stage": 16,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 13.1,
+      "kind": "detail",
+      "stage": 17,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 13.4,
+      "kind": "sea-wave",
+      "stage": 18,
+      "reveal": 0.3
+    },
+    {
+      "start": 13.733333333333333,
+      "kind": "sea-wave",
+      "stage": 19,
+      "reveal": 0.3
+    },
+    {
+      "start": 14.066666666666666,
+      "kind": "sea-wave",
+      "stage": 20,
+      "reveal": 0.3
+    },
+    {
+      "start": 14.4,
+      "kind": "bridge",
+      "stage": 21,
+      "reveal": 0.7333333333333333
+    },
+    {
+      "start": 16.3,
+      "kind": "sea-buoy",
+      "stage": 22,
+      "reveal": 0.3
+    },
+    {
+      "start": 16.633333333333333,
+      "kind": "sea-wave",
+      "stage": 23,
+      "reveal": 0.3
+    },
+    {
+      "start": 16.966666666666665,
+      "kind": "sea-gull",
+      "stage": 24,
+      "reveal": 0.3
+    },
+    {
+      "start": 17.3,
+      "kind": "sea-gull",
+      "stage": 25,
+      "reveal": 0.3
+    },
+    {
+      "start": 18.9,
+      "kind": "foundation",
+      "stage": 26,
+      "reveal": 0.6666666666666666
+    },
+    {
+      "start": 19.6,
+      "kind": "building",
+      "stage": 27,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 20.733333333333334,
+      "kind": "building",
+      "stage": 28,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 21.866666666666667,
+      "kind": "building",
+      "stage": 29,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 23,
+      "kind": "building",
+      "stage": 30,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 24.133333333333333,
+      "kind": "building",
+      "stage": 31,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 25.266666666666666,
+      "kind": "building",
+      "stage": 32,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 26.4,
+      "kind": "building",
+      "stage": 33,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 27.533333333333335,
+      "kind": "detail",
+      "stage": 34,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 27.833333333333332,
+      "kind": "sea-wave",
+      "stage": 35,
+      "reveal": 0.3
+    },
+    {
+      "start": 28.166666666666668,
+      "kind": "sea-wave",
+      "stage": 36,
+      "reveal": 0.3
+    },
+    {
+      "start": 28.5,
+      "kind": "sea-wave",
+      "stage": 37,
+      "reveal": 0.3
+    },
+    {
+      "start": 28.833333333333332,
+      "kind": "bridge",
+      "stage": 38,
+      "reveal": 0.7333333333333333
+    },
+    {
+      "start": 30.733333333333334,
+      "kind": "sea-buoy",
+      "stage": 39,
+      "reveal": 0.3
+    },
+    {
+      "start": 31.066666666666666,
+      "kind": "sea-wave",
+      "stage": 40,
+      "reveal": 0.3
+    },
+    {
+      "start": 31.4,
+      "kind": "sea-gull",
+      "stage": 41,
+      "reveal": 0.3
+    },
+    {
+      "start": 31.733333333333334,
+      "kind": "sea-gull",
+      "stage": 42,
+      "reveal": 0.3
+    },
+    {
+      "start": 33.333333333333336,
+      "kind": "foundation",
+      "stage": 43,
+      "reveal": 0.6666666666666666
+    },
+    {
+      "start": 34.03333333333333,
+      "kind": "building",
+      "stage": 44,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 35.166666666666664,
+      "kind": "building",
+      "stage": 45,
+      "reveal": 0.6333333333333333
+    },
+    {
+      "start": 36.3,
+      "kind": "detail",
+      "stage": 46,
+      "reveal": 0.26666666666666666
+    },
+    {
+      "start": 36.6,
+      "kind": "sea-wave",
+      "stage": 47,
+      "reveal": 0.3
+    },
+    {
+      "start": 36.93333333333333,
+      "kind": "sea-wave",
+      "stage": 48,
+      "reveal": 0.3
+    },
+    {
+      "start": 37.266666666666666,
+      "kind": "sea-wave",
+      "stage": 49,
+      "reveal": 0.3
+    },
+    {
+      "start": 37.6,
+      "kind": "bridge",
+      "stage": 50,
+      "reveal": 0.7333333333333333
+    },
+    {
+      "start": 39.5,
+      "kind": "sea-buoy",
+      "stage": 51,
+      "reveal": 0.3
+    },
+    {
+      "start": 39.833333333333336,
+      "kind": "sea-wave",
+      "stage": 52,
+      "reveal": 0.3
+    },
+    {
+      "start": 40.166666666666664,
+      "kind": "sea-gull",
+      "stage": 53,
+      "reveal": 0.3
+    },
+    {
+      "start": 40.5,
+      "kind": "sea-gull",
+      "stage": 54,
+      "reveal": 0.3
+    }
+  ]
+}

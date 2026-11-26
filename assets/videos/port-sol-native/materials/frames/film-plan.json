@@ -1,0 +1,2365 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "duration": 30,
+  "phases": [
+    {
+      "start": 0,
+      "file": "png-final/state-0.png",
+      "previous": null,
+      "stage": 0,
+      "kind": "hold",
+      "duration": 0.15,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        8100,
+        960
+      ],
+      "id": "A 起始状态"
+    },
+    {
+      "start": 0.15,
+      "file": "png-final/state-1.png",
+      "previous": "png-final/state-0.png",
+      "stage": 1,
+      "kind": "foundation",
+      "duration": 0.4,
+      "reveal": 0.25,
+      "revealBounds": [
+        1818,
+        80,
+        927,
+        620
+      ],
+      "id": "A 底座"
+    },
+    {
+      "start": 0.55,
+      "file": "png-final/state-2.png",
+      "previous": "png-final/state-1.png",
+      "stage": 2,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2088,
+        80,
+        144,
+        180
+      ],
+      "id": "A 建筑 1"
+    },
+    {
+      "start": 1.25,
+      "file": "png-final/state-3.png",
+      "previous": "png-final/state-2.png",
+      "stage": 3,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2214,
+        100,
+        126,
+        180
+      ],
+      "id": "A 建筑 2"
+    },
+    {
+      "start": 1.95,
+      "file": "png-final/state-4.png",
+      "previous": "png-final/state-3.png",
+      "stage": 4,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        1935,
+        120,
+        216,
+        280
+      ],
+      "id": "A 建筑 3"
+    },
+    {
+      "start": 2.65,
+      "file": "png-final/state-5.png",
+      "previous": "png-final/state-4.png",
+      "stage": 5,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2277,
+        140,
+        153,
+        200
+      ],
+      "id": "A 建筑 4"
+    },
+    {
+      "start": 3.3499999999999996,
+      "file": "png-final/state-6.png",
+      "previous": "png-final/state-5.png",
+      "stage": 6,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2367,
+        160,
+        153,
+        240
+      ],
+      "id": "A 建筑 5"
+    },
+    {
+      "start": 4.05,
+      "file": "png-final/state-7.png",
+      "previous": "png-final/state-6.png",
+      "stage": 7,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2448,
+        260,
+        144,
+        180
+      ],
+      "id": "A 建筑 6"
+    },
+    {
+      "start": 4.75,
+      "file": "png-final/state-8.png",
+      "previous": "png-final/state-7.png",
+      "stage": 8,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2223,
+        340,
+        153,
+        180
+      ],
+      "id": "A 建筑 7"
+    },
+    {
+      "start": 5.45,
+      "file": "png-final/state-9.png",
+      "previous": "png-final/state-8.png",
+      "stage": 9,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2178,
+        180,
+        81,
+        240
+      ],
+      "id": "A 建筑 8"
+    },
+    {
+      "start": 6.15,
+      "file": "png-final/state-10.png",
+      "previous": "png-final/state-9.png",
+      "stage": 10,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        2367,
+        360,
+        99,
+        240
+      ],
+      "id": "A 建筑 9"
+    },
+    {
+      "start": 6.8500000000000005,
+      "file": "png-final/state-11.png",
+      "previous": "png-final/state-10.png",
+      "stage": 11,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        2250,
+        260,
+        99,
+        120
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.010000000000001,
+      "file": "png-final/state-12.png",
+      "previous": "png-final/state-11.png",
+      "stage": 12,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        2178,
+        460,
+        63,
+        100
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.170000000000001,
+      "file": "png-final/state-13.png",
+      "previous": "png-final/state-12.png",
+      "stage": 13,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        1998,
+        360,
+        72,
+        80
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.330000000000001,
+      "file": "png-final/state-14.png",
+      "previous": "png-final/state-13.png",
+      "stage": 14,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        2259,
+        520,
+        90,
+        60
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.490000000000001,
+      "file": "png-final/state-15.png",
+      "previous": "png-final/state-14.png",
+      "stage": 15,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        1971,
+        80,
+        675,
+        440
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.650000000000001,
+      "file": "png-final/state-16.png",
+      "previous": "png-final/state-15.png",
+      "stage": 16,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        2340,
+        360,
+        153,
+        120
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.810000000000001,
+      "file": "png-final/state-17.png",
+      "previous": "png-final/state-16.png",
+      "stage": 17,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        1944,
+        200,
+        522,
+        400
+      ],
+      "id": "A 细节"
+    },
+    {
+      "start": 7.9700000000000015,
+      "file": "png-final/state-18.png",
+      "previous": "png-final/state-17.png",
+      "stage": 18,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        1782,
+        680,
+        54,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 8.170000000000002,
+      "file": "png-final/state-19.png",
+      "previous": "png-final/state-18.png",
+      "stage": 19,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        2250,
+        700,
+        63,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 8.370000000000001,
+      "file": "png-final/state-20.png",
+      "previous": "png-final/state-19.png",
+      "stage": 20,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        2700,
+        600,
+        54,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 8.57,
+      "file": "png-final/state-21.png",
+      "previous": "png-final/state-20.png",
+      "stage": 21,
+      "kind": "bridge",
+      "duration": 0.68,
+      "reveal": 0.28,
+      "revealBounds": [
+        2547,
+        120,
+        1116,
+        460
+      ],
+      "id": "向前的桥"
+    },
+    {
+      "start": 9.25,
+      "file": "png-final/state-21.png",
+      "previous": "png-final/state-21.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 0.9,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 10.15,
+      "file": "png-final/state-22.png",
+      "previous": "png-final/state-21.png",
+      "stage": 22,
+      "kind": "sea-buoy",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        3033,
+        620,
+        54,
+        80
+      ],
+      "id": "静态浮标"
+    },
+    {
+      "start": 10.450000000000001,
+      "file": "png-final/state-23.png",
+      "previous": "png-final/state-22.png",
+      "stage": 23,
+      "kind": "sea-wave",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        2934,
+        120,
+        63,
+        40
+      ],
+      "id": "浪线"
+    },
+    {
+      "start": 10.750000000000002,
+      "file": "png-final/state-24.png",
+      "previous": "png-final/state-23.png",
+      "stage": 24,
+      "kind": "sea-gull",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        3087,
+        80,
+        45,
+        40
+      ],
+      "id": "静态海鸥 1"
+    },
+    {
+      "start": 11.050000000000002,
+      "file": "png-final/state-25.png",
+      "previous": "png-final/state-24.png",
+      "stage": 25,
+      "kind": "sea-gull",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        3159,
+        120,
+        45,
+        40
+      ],
+      "id": "静态海鸥 2"
+    },
+    {
+      "start": 11.350000000000003,
+      "file": "png-final/state-25.png",
+      "previous": "png-final/state-25.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 1.1999999999999966,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 12.55,
+      "file": "png-final/state-25.png",
+      "previous": "png-final/state-25.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 0.15,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 12.700000000000001,
+      "file": "png-final/state-26.png",
+      "previous": "png-final/state-25.png",
+      "stage": 26,
+      "kind": "foundation",
+      "duration": 0.4,
+      "reveal": 0.25,
+      "revealBounds": [
+        3438,
+        80,
+        927,
+        620
+      ],
+      "id": "B 底座"
+    },
+    {
+      "start": 13.100000000000001,
+      "file": "png-final/state-27.png",
+      "previous": "png-final/state-26.png",
+      "stage": 27,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        3699,
+        80,
+        153,
+        180
+      ],
+      "id": "B 建筑 1"
+    },
+    {
+      "start": 13.8,
+      "file": "png-final/state-28.png",
+      "previous": "png-final/state-27.png",
+      "stage": 28,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        3807,
+        100,
+        162,
+        200
+      ],
+      "id": "B 建筑 2"
+    },
+    {
+      "start": 14.5,
+      "file": "png-final/state-29.png",
+      "previous": "png-final/state-28.png",
+      "stage": 29,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        3897,
+        120,
+        153,
+        240
+      ],
+      "id": "B 建筑 3"
+    },
+    {
+      "start": 15.2,
+      "file": "png-final/state-30.png",
+      "previous": "png-final/state-29.png",
+      "stage": 30,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        3978,
+        200,
+        153,
+        200
+      ],
+      "id": "B 建筑 4"
+    },
+    {
+      "start": 15.899999999999999,
+      "file": "png-final/state-31.png",
+      "previous": "png-final/state-30.png",
+      "stage": 31,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        4059,
+        240,
+        162,
+        220
+      ],
+      "id": "B 建筑 5"
+    },
+    {
+      "start": 16.599999999999998,
+      "file": "png-final/state-32.png",
+      "previous": "png-final/state-31.png",
+      "stage": 32,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        3744,
+        200,
+        216,
+        300
+      ],
+      "id": "B 建筑 6"
+    },
+    {
+      "start": 17.299999999999997,
+      "file": "png-final/state-33.png",
+      "previous": "png-final/state-32.png",
+      "stage": 33,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        3564,
+        140,
+        180,
+        220
+      ],
+      "id": "B 建筑 7"
+    },
+    {
+      "start": 17.999999999999996,
+      "file": "png-final/state-34.png",
+      "previous": "png-final/state-33.png",
+      "stage": 34,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        3627,
+        140,
+        621,
+        440
+      ],
+      "id": "B 细节"
+    },
+    {
+      "start": 18.159999999999997,
+      "file": "png-final/state-35.png",
+      "previous": "png-final/state-34.png",
+      "stage": 35,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        3402,
+        680,
+        54,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 18.359999999999996,
+      "file": "png-final/state-36.png",
+      "previous": "png-final/state-35.png",
+      "stage": 36,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 18.559999999999995,
+      "file": "png-final/state-37.png",
+      "previous": "png-final/state-36.png",
+      "stage": 37,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        4320,
+        600,
+        54,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 18.759999999999994,
+      "file": "png-final/state-38.png",
+      "previous": "png-final/state-37.png",
+      "stage": 38,
+      "kind": "bridge",
+      "duration": 0.68,
+      "reveal": 0.28,
+      "revealBounds": [
+        4167,
+        200,
+        1260,
+        400
+      ],
+      "id": "向前的桥"
+    },
+    {
+      "start": 19.439999999999994,
+      "file": "png-final/state-38.png",
+      "previous": "png-final/state-38.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 0.9,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 20.339999999999993,
+      "file": "png-final/state-39.png",
+      "previous": "png-final/state-38.png",
+      "stage": 39,
+      "kind": "sea-buoy",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        4653,
+        140,
+        54,
+        100
+      ],
+      "id": "静态浮标"
+    },
+    {
+      "start": 20.639999999999993,
+      "file": "png-final/state-40.png",
+      "previous": "png-final/state-39.png",
+      "stage": 40,
+      "kind": "sea-wave",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        4554,
+        660,
+        63,
+        40
+      ],
+      "id": "浪线"
+    },
+    {
+      "start": 20.939999999999994,
+      "file": "png-final/state-41.png",
+      "previous": "png-final/state-40.png",
+      "stage": 41,
+      "kind": "sea-gull",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        4707,
+        640,
+        45,
+        40
+      ],
+      "id": "静态海鸥 1"
+    },
+    {
+      "start": 21.239999999999995,
+      "file": "png-final/state-42.png",
+      "previous": "png-final/state-41.png",
+      "stage": 42,
+      "kind": "sea-gull",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        4779,
+        660,
+        45,
+        40
+      ],
+      "id": "静态海鸥 2"
+    },
+    {
+      "start": 21.539999999999996,
+      "file": "png-final/state-42.png",
+      "previous": "png-final/state-42.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 1.1999999999999984,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 22.739999999999995,
+      "file": "png-final/state-42.png",
+      "previous": "png-final/state-42.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 0.15,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 22.889999999999993,
+      "file": "png-final/state-43.png",
+      "previous": "png-final/state-42.png",
+      "stage": 43,
+      "kind": "foundation",
+      "duration": 0.4,
+      "reveal": 0.25,
+      "revealBounds": [
+        5310,
+        240,
+        450,
+        300
+      ],
+      "id": "C 底座"
+    },
+    {
+      "start": 23.289999999999992,
+      "file": "png-final/state-44.png",
+      "previous": "png-final/state-43.png",
+      "stage": 44,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        5472,
+        100,
+        117,
+        320
+      ],
+      "id": "C 建筑 1"
+    },
+    {
+      "start": 23.98999999999999,
+      "file": "png-final/state-45.png",
+      "previous": "png-final/state-44.png",
+      "stage": 45,
+      "kind": "building",
+      "duration": 0.7,
+      "reveal": 0.2,
+      "revealBounds": [
+        5508,
+        320,
+        117,
+        160
+      ],
+      "id": "C 建筑 2"
+    },
+    {
+      "start": 24.68999999999999,
+      "file": "png-final/state-46.png",
+      "previous": "png-final/state-45.png",
+      "stage": 46,
+      "kind": "detail",
+      "duration": 0.16,
+      "reveal": 0.08,
+      "revealBounds": [
+        5391,
+        300,
+        288,
+        280
+      ],
+      "id": "C 细节"
+    },
+    {
+      "start": 24.84999999999999,
+      "file": "png-final/state-47.png",
+      "previous": "png-final/state-46.png",
+      "stage": 47,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        5022,
+        680,
+        54,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 25.04999999999999,
+      "file": "png-final/state-48.png",
+      "previous": "png-final/state-47.png",
+      "stage": 48,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        5490,
+        700,
+        63,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 25.24999999999999,
+      "file": "png-final/state-49.png",
+      "previous": "png-final/state-48.png",
+      "stage": 49,
+      "kind": "sea-wave",
+      "duration": 0.2,
+      "reveal": 0.12,
+      "revealBounds": [
+        5940,
+        600,
+        54,
+        40
+      ],
+      "id": "绘制浪线"
+    },
+    {
+      "start": 25.44999999999999,
+      "file": "png-final/state-50.png",
+      "previous": "png-final/state-49.png",
+      "stage": 50,
+      "kind": "bridge",
+      "duration": 0.68,
+      "reveal": 0.28,
+      "revealBounds": [
+        5607,
+        120,
+        1296,
+        320
+      ],
+      "id": "向前的桥"
+    },
+    {
+      "start": 26.12999999999999,
+      "file": "png-final/state-50.png",
+      "previous": "png-final/state-50.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 0.9,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 27.029999999999987,
+      "file": "png-final/state-51.png",
+      "previous": "png-final/state-50.png",
+      "stage": 51,
+      "kind": "sea-buoy",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        6273,
+        620,
+        54,
+        80
+      ],
+      "id": "静态浮标"
+    },
+    {
+      "start": 27.329999999999988,
+      "file": "png-final/state-52.png",
+      "previous": "png-final/state-51.png",
+      "stage": 52,
+      "kind": "sea-wave",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        6174,
+        120,
+        63,
+        40
+      ],
+      "id": "浪线"
+    },
+    {
+      "start": 27.62999999999999,
+      "file": "png-final/state-53.png",
+      "previous": "png-final/state-52.png",
+      "stage": 53,
+      "kind": "sea-gull",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        6327,
+        80,
+        45,
+        40
+      ],
+      "id": "静态海鸥 1"
+    },
+    {
+      "start": 27.92999999999999,
+      "file": "png-final/state-54.png",
+      "previous": "png-final/state-53.png",
+      "stage": 54,
+      "kind": "sea-gull",
+      "duration": 0.3,
+      "reveal": 0.12,
+      "revealBounds": [
+        6399,
+        120,
+        45,
+        40
+      ],
+      "id": "静态海鸥 2"
+    },
+    {
+      "start": 28.22999999999999,
+      "file": "png-final/state-54.png",
+      "previous": "png-final/state-54.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 1.1999999999999984,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "start": 29.42999999999999,
+      "file": "png-final/state-54.png",
+      "previous": "png-final/state-54.png",
+      "stage": -1,
+      "kind": "hold",
+      "duration": 0.5700000000000109,
+      "reveal": 0,
+      "revealBounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "cameras": [
+    {
+      "start": 0,
+      "duration": 9.25,
+      "mode": "hold",
+      "from": [
+        2295,
+        400,
+        1240
+      ],
+      "to": [
+        2295,
+        400,
+        1240
+      ],
+      "path": [],
+      "anchor": []
+    },
+    {
+      "start": 9.25,
+      "duration": 3.3,
+      "mode": "pan",
+      "from": [
+        2295,
+        400,
+        1240
+      ],
+      "to": [
+        3915,
+        400,
+        1240
+      ],
+      "path": [
+        [
+          2295,
+          400
+        ],
+        [
+          2311.2,
+          400
+        ],
+        [
+          2327.4,
+          400
+        ],
+        [
+          2343.6,
+          400
+        ],
+        [
+          2359.8,
+          400
+        ],
+        [
+          2376,
+          400
+        ],
+        [
+          2392.2,
+          400
+        ],
+        [
+          2408.4,
+          400
+        ],
+        [
+          2424.6,
+          400
+        ],
+        [
+          2440.8,
+          400
+        ],
+        [
+          2457,
+          400
+        ],
+        [
+          2473.2,
+          400
+        ],
+        [
+          2489.4,
+          400
+        ],
+        [
+          2505.6,
+          400
+        ],
+        [
+          2521.8,
+          400
+        ],
+        [
+          2538,
+          400
+        ],
+        [
+          2554.2,
+          400
+        ],
+        [
+          2570.4,
+          400
+        ],
+        [
+          2586.6,
+          400
+        ],
+        [
+          2602.8,
+          400
+        ],
+        [
+          2619,
+          400
+        ],
+        [
+          2635.2,
+          400
+        ],
+        [
+          2651.4,
+          400
+        ],
+        [
+          2667.6,
+          400
+        ],
+        [
+          2683.8,
+          400
+        ],
+        [
+          2700,
+          400
+        ],
+        [
+          2716.2,
+          400
+        ],
+        [
+          2732.4,
+          400
+        ],
+        [
+          2748.6,
+          400
+        ],
+        [
+          2764.8,
+          400
+        ],
+        [
+          2781,
+          400
+        ],
+        [
+          2797.2,
+          400
+        ],
+        [
+          2813.4,
+          400
+        ],
+        [
+          2829.6,
+          400
+        ],
+        [
+          2845.8,
+          400
+        ],
+        [
+          2862,
+          400
+        ],
+        [
+          2878.2,
+          400
+        ],
+        [
+          2894.4,
+          400
+        ],
+        [
+          2910.6,
+          400
+        ],
+        [
+          2926.8,
+          400
+        ],
+        [
+          2943,
+          400
+        ],
+        [
+          2959.2,
+          400
+        ],
+        [
+          2975.4,
+          400
+        ],
+        [
+          2991.6,
+          400
+        ],
+        [
+          3007.8,
+          400
+        ],
+        [
+          3024,
+          400
+        ],
+        [
+          3040.2,
+          400
+        ],
+        [
+          3056.4,
+          400
+        ],
+        [
+          3072.6,
+          400
+        ],
+        [
+          3088.8,
+          400
+        ],
+        [
+          3105,
+          400
+        ],
+        [
+          3121.2,
+          400
+        ],
+        [
+          3137.4,
+          400
+        ],
+        [
+          3153.6,
+          400
+        ],
+        [
+          3169.8,
+          400
+        ],
+        [
+          3186,
+          400
+        ],
+        [
+          3202.2,
+          400
+        ],
+        [
+          3218.4,
+          400
+        ],
+        [
+          3234.6,
+          400
+        ],
+        [
+          3250.8,
+          400
+        ],
+        [
+          3267,
+          400
+        ],
+        [
+          3283.2,
+          400
+        ],
+        [
+          3299.4,
+          400
+        ],
+        [
+          3315.6,
+          400
+        ],
+        [
+          3331.8,
+          400
+        ],
+        [
+          3348,
+          400
+        ],
+        [
+          3364.2,
+          400
+        ],
+        [
+          3380.4,
+          400
+        ],
+        [
+          3396.6,
+          400
+        ],
+        [
+          3412.8,
+          400
+        ],
+        [
+          3429,
+          400
+        ],
+        [
+          3445.2,
+          400
+        ],
+        [
+          3461.4,
+          400
+        ],
+        [
+          3477.6,
+          400
+        ],
+        [
+          3493.8,
+          400
+        ],
+        [
+          3510,
+          400
+        ],
+        [
+          3526.2,
+          400
+        ],
+        [
+          3542.4,
+          400
+        ],
+        [
+          3558.6,
+          400
+        ],
+        [
+          3574.8,
+          400
+        ],
+        [
+          3591,
+          400
+        ],
+        [
+          3607.2,
+          400
+        ],
+        [
+          3623.4,
+          400
+        ],
+        [
+          3639.6,
+          400
+        ],
+        [
+          3655.8,
+          400
+        ],
+        [
+          3672,
+          400
+        ],
+        [
+          3688.2,
+          400
+        ],
+        [
+          3704.4,
+          400
+        ],
+        [
+          3720.6,
+          400
+        ],
+        [
+          3736.8,
+          400
+        ],
+        [
+          3753,
+          400
+        ],
+        [
+          3769.2,
+          400
+        ],
+        [
+          3785.4,
+          400
+        ],
+        [
+          3801.6,
+          400
+        ],
+        [
+          3817.8,
+          400
+        ],
+        [
+          3834,
+          400
+        ],
+        [
+          3850.2,
+          400
+        ],
+        [
+          3866.4,
+          400
+        ],
+        [
+          3882.6,
+          400
+        ],
+        [
+          3898.8,
+          400
+        ],
+        [
+          3915,
+          400
+        ]
+      ],
+      "anchor": []
+    },
+    {
+      "start": 12.55,
+      "duration": 6.8899999999999935,
+      "mode": "hold",
+      "from": [
+        3915,
+        400,
+        1240
+      ],
+      "to": [
+        3915,
+        400,
+        1240
+      ],
+      "path": [],
+      "anchor": []
+    },
+    {
+      "start": 19.439999999999994,
+      "duration": 3.3,
+      "mode": "pan",
+      "from": [
+        3915,
+        400,
+        1240
+      ],
+      "to": [
+        5535,
+        400,
+        1240
+      ],
+      "path": [
+        [
+          3915,
+          400
+        ],
+        [
+          3931.2,
+          400
+        ],
+        [
+          3947.4,
+          400
+        ],
+        [
+          3963.6,
+          400
+        ],
+        [
+          3979.8,
+          400
+        ],
+        [
+          3996,
+          400
+        ],
+        [
+          4012.2,
+          400
+        ],
+        [
+          4028.4,
+          400
+        ],
+        [
+          4044.6,
+          400
+        ],
+        [
+          4060.8,
+          400
+        ],
+        [
+          4077,
+          400
+        ],
+        [
+          4093.2,
+          400
+        ],
+        [
+          4109.4,
+          400
+        ],
+        [
+          4125.6,
+          400
+        ],
+        [
+          4141.8,
+          400
+        ],
+        [
+          4158,
+          400
+        ],
+        [
+          4174.2,
+          400
+        ],
+        [
+          4190.4,
+          400
+        ],
+        [
+          4206.6,
+          400
+        ],
+        [
+          4222.8,
+          400
+        ],
+        [
+          4239,
+          400
+        ],
+        [
+          4255.2,
+          400
+        ],
+        [
+          4271.4,
+          400
+        ],
+        [
+          4287.6,
+          400
+        ],
+        [
+          4303.8,
+          400
+        ],
+        [
+          4320,
+          400
+        ],
+        [
+          4336.2,
+          400
+        ],
+        [
+          4352.4,
+          400
+        ],
+        [
+          4368.6,
+          400
+        ],
+        [
+          4384.8,
+          400
+        ],
+        [
+          4401,
+          400
+        ],
+        [
+          4417.2,
+          400
+        ],
+        [
+          4433.4,
+          400
+        ],
+        [
+          4449.6,
+          400
+        ],
+        [
+          4465.8,
+          400
+        ],
+        [
+          4482,
+          400
+        ],
+        [
+          4498.2,
+          400
+        ],
+        [
+          4514.4,
+          400
+        ],
+        [
+          4530.6,
+          400
+        ],
+        [
+          4546.8,
+          400
+        ],
+        [
+          4563,
+          400
+        ],
+        [
+          4579.2,
+          400
+        ],
+        [
+          4595.4,
+          400
+        ],
+        [
+          4611.6,
+          400
+        ],
+        [
+          4627.8,
+          400
+        ],
+        [
+          4644,
+          400
+        ],
+        [
+          4660.2,
+          400
+        ],
+        [
+          4676.4,
+          400
+        ],
+        [
+          4692.6,
+          400
+        ],
+        [
+          4708.8,
+          400
+        ],
+        [
+          4725,
+          400
+        ],
+        [
+          4741.2,
+          400
+        ],
+        [
+          4757.4,
+          400
+        ],
+        [
+          4773.6,
+          400
+        ],
+        [
+          4789.8,
+          400
+        ],
+        [
+          4806,
+          400
+        ],
+        [
+          4822.2,
+          400
+        ],
+        [
+          4838.4,
+          400
+        ],
+        [
+          4854.6,
+          400
+        ],
+        [
+          4870.8,
+          400
+        ],
+        [
+          4887,
+          400
+        ],
+        [
+          4903.2,
+          400
+        ],
+        [
+          4919.4,
+          400
+        ],
+        [
+          4935.6,
+          400
+        ],
+        [
+          4951.8,
+          400
+        ],
+        [
+          4968,
+          400
+        ],
+        [
+          4984.2,
+          400
+        ],
+        [
+          5000.4,
+          400
+        ],
+        [
+          5016.6,
+          400
+        ],
+        [
+          5032.8,
+          400
+        ],
+        [
+          5049,
+          400
+        ],
+        [
+          5065.2,
+          400
+        ],
+        [
+          5081.4,
+          400
+        ],
+        [
+          5097.6,
+          400
+        ],
+        [
+          5113.8,
+          400
+        ],
+        [
+          5130,
+          400
+        ],
+        [
+          5146.2,
+          400
+        ],
+        [
+          5162.4,
+          400
+        ],
+        [
+          5178.6,
+          400
+        ],
+        [
+          5194.8,
+          400
+        ],
+        [
+          5211,
+          400
+        ],
+        [
+          5227.2,
+          400
+        ],
+        [
+          5243.4,
+          400
+        ],
+        [
+          5259.6,
+          400
+        ],
+        [
+          5275.8,
+          400
+        ],
+        [
+          5292,
+          400
+        ],
+        [
+          5308.2,
+          400
+        ],
+        [
+          5324.4,
+          400
+        ],
+        [
+          5340.6,
+          400
+        ],
+        [
+          5356.8,
+          400
+        ],
+        [
+          5373,
+          400
+        ],
+        [
+          5389.2,
+          400
+        ],
+        [
+          5405.4,
+          400
+        ],
+        [
+          5421.6,
+          400
+        ],
+        [
+          5437.8,
+          400
+        ],
+        [
+          5454,
+          400
+        ],
+        [
+          5470.2,
+          400
+        ],
+        [
+          5486.4,
+          400
+        ],
+        [
+          5502.6,
+          400
+        ],
+        [
+          5518.8,
+          400
+        ],
+        [
+          5535,
+          400
+        ]
+      ],
+      "anchor": []
+    },
+    {
+      "start": 22.739999999999995,
+      "duration": 3.3899999999999935,
+      "mode": "hold",
+      "from": [
+        5535,
+        400,
+        1240
+      ],
+      "to": [
+        5535,
+        400,
+        1240
+      ],
+      "path": [],
+      "anchor": []
+    },
+    {
+      "start": 26.12999999999999,
+      "duration": 3.3,
+      "mode": "pan",
+      "from": [
+        5535,
+        400,
+        1240
+      ],
+      "to": [
+        7155,
+        400,
+        1240
+      ],
+      "path": [
+        [
+          5535,
+          400
+        ],
+        [
+          5551.2,
+          400
+        ],
+        [
+          5567.4,
+          400
+        ],
+        [
+          5583.6,
+          400
+        ],
+        [
+          5599.8,
+          400
+        ],
+        [
+          5616,
+          400
+        ],
+        [
+          5632.2,
+          400
+        ],
+        [
+          5648.4,
+          400
+        ],
+        [
+          5664.6,
+          400
+        ],
+        [
+          5680.8,
+          400
+        ],
+        [
+          5697,
+          400
+        ],
+        [
+          5713.2,
+          400
+        ],
+        [
+          5729.4,
+          400
+        ],
+        [
+          5745.6,
+          400
+        ],
+        [
+          5761.8,
+          400
+        ],
+        [
+          5778,
+          400
+        ],
+        [
+          5794.2,
+          400
+        ],
+        [
+          5810.4,
+          400
+        ],
+        [
+          5826.6,
+          400
+        ],
+        [
+          5842.8,
+          400
+        ],
+        [
+          5859,
+          400
+        ],
+        [
+          5875.2,
+          400
+        ],
+        [
+          5891.4,
+          400
+        ],
+        [
+          5907.6,
+          400
+        ],
+        [
+          5923.8,
+          400
+        ],
+        [
+          5940,
+          400
+        ],
+        [
+          5956.2,
+          400
+        ],
+        [
+          5972.4,
+          400
+        ],
+        [
+          5988.6,
+          400
+        ],
+        [
+          6004.8,
+          400
+        ],
+        [
+          6021,
+          400
+        ],
+        [
+          6037.2,
+          400
+        ],
+        [
+          6053.4,
+          400
+        ],
+        [
+          6069.6,
+          400
+        ],
+        [
+          6085.8,
+          400
+        ],
+        [
+          6102,
+          400
+        ],
+        [
+          6118.2,
+          400
+        ],
+        [
+          6134.4,
+          400
+        ],
+        [
+          6150.6,
+          400
+        ],
+        [
+          6166.8,
+          400
+        ],
+        [
+          6183,
+          400
+        ],
+        [
+          6199.2,
+          400
+        ],
+        [
+          6215.4,
+          400
+        ],
+        [
+          6231.6,
+          400
+        ],
+        [
+          6247.8,
+          400
+        ],
+        [
+          6264,
+          400
+        ],
+        [
+          6280.2,
+          400
+        ],
+        [
+          6296.4,
+          400
+        ],
+        [
+          6312.6,
+          400
+        ],
+        [
+          6328.8,
+          400
+        ],
+        [
+          6345,
+          400
+        ],
+        [
+          6361.2,
+          400
+        ],
+        [
+          6377.4,
+          400
+        ],
+        [
+          6393.6,
+          400
+        ],
+        [
+          6409.8,
+          400
+        ],
+        [
+          6426,
+          400
+        ],
+        [
+          6442.2,
+          400
+        ],
+        [
+          6458.4,
+          400
+        ],
+        [
+          6474.6,
+          400
+        ],
+        [
+          6490.8,
+          400
+        ],
+        [
+          6507,
+          400
+        ],
+        [
+          6523.2,
+          400
+        ],
+        [
+          6539.4,
+          400
+        ],
+        [
+          6555.6,
+          400
+        ],
+        [
+          6571.8,
+          400
+        ],
+        [
+          6588,
+          400
+        ],
+        [
+          6604.2,
+          400
+        ],
+        [
+          6620.4,
+          400
+        ],
+        [
+          6636.6,
+          400
+        ],
+        [
+          6652.8,
+          400
+        ],
+        [
+          6669,
+          400
+        ],
+        [
+          6685.2,
+          400
+        ],
+        [
+          6701.4,
+          400
+        ],
+        [
+          6717.6,
+          400
+        ],
+        [
+          6733.8,
+          400
+        ],
+        [
+          6750,
+          400
+        ],
+        [
+          6766.2,
+          400
+        ],
+        [
+          6782.4,
+          400
+        ],
+        [
+          6798.6,
+          400
+        ],
+        [
+          6814.8,
+          400
+        ],
+        [
+          6831,
+          400
+        ],
+        [
+          6847.2,
+          400
+        ],
+        [
+          6863.4,
+          400
+        ],
+        [
+          6879.6,
+          400
+        ],
+        [
+          6895.8,
+          400
+        ],
+        [
+          6912,
+          400
+        ],
+        [
+          6928.2,
+          400
+        ],
+        [
+          6944.4,
+          400
+        ],
+        [
+          6960.6,
+          400
+        ],
+        [
+          6976.8,
+          400
+        ],
+        [
+          6993,
+          400
+        ],
+        [
+          7009.2,
+          400
+        ],
+        [
+          7025.4,
+          400
+        ],
+        [
+          7041.6,
+          400
+        ],
+        [
+          7057.8,
+          400
+        ],
+        [
+          7074,
+          400
+        ],
+        [
+          7090.2,
+          400
+        ],
+        [
+          7106.4,
+          400
+        ],
+        [
+          7122.6,
+          400
+        ],
+        [
+          7138.8,
+          400
+        ],
+        [
+          7155,
+          400
+        ]
+      ],
+      "anchor": []
+    },
+    {
+      "start": 29.42999999999999,
+      "duration": 0.5700000000000109,
+      "mode": "hold",
+      "from": [
+        7155,
+        400,
+        1240
+      ],
+      "to": [
+        7155,
+        400,
+        1240
+      ],
+      "path": [],
+      "anchor": []
+    }
+  ],
+  "uniqueIslands": [
+    "A",
+    "B",
+    "C"
+  ],
+  "periodPixels": 4860
+}

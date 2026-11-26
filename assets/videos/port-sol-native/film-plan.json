@@ -1,0 +1,4052 @@
+{
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "duration": 42.4,
+  "phases": [
+    {
+      "start": 0,
+      "file": "png/frame-0.png",
+      "duration": 0.4333333333333333,
+      "label": "Loop start"
+    },
+    {
+      "start": 0.43333333333333335,
+      "file": "png/frame-13.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.4666666666666667,
+      "file": "png/frame-14.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.5,
+      "file": "png/frame-15.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.5333333333333333,
+      "file": "png/frame-16.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.5666666666666667,
+      "file": "png/frame-17.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.6,
+      "file": "png/frame-18.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.6333333333333333,
+      "file": "png/frame-19.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.6666666666666666,
+      "file": "png/frame-20.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.7,
+      "file": "png/frame-21.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.7333333333333333,
+      "file": "png/frame-22.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.7666666666666667,
+      "file": "png/frame-23.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.8,
+      "file": "png/frame-24.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.8333333333333334,
+      "file": "png/frame-25.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.8666666666666667,
+      "file": "png/frame-26.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.9,
+      "file": "png/frame-27.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.9333333333333333,
+      "file": "png/frame-28.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 0.9666666666666667,
+      "file": "png/frame-29.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 1,
+      "file": "png/frame-30.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 1.0333333333333334,
+      "file": "png/frame-31.png",
+      "duration": 0.03333333333333333,
+      "label": "A 底座"
+    },
+    {
+      "start": 1.0666666666666667,
+      "file": "png/frame-32.png",
+      "duration": 0.1,
+      "label": "A 底座"
+    },
+    {
+      "start": 1.1666666666666667,
+      "file": "png/frame-35.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.2,
+      "file": "png/frame-36.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.2666666666666666,
+      "file": "png/frame-38.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.3333333333333333,
+      "file": "png/frame-40.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.4,
+      "file": "png/frame-42.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.4666666666666666,
+      "file": "png/frame-44.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.5,
+      "file": "png/frame-45.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.5666666666666667,
+      "file": "png/frame-47.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.6333333333333333,
+      "file": "png/frame-49.png",
+      "duration": 0.1,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 1.7333333333333334,
+      "file": "png/frame-52.png",
+      "duration": 0.5666666666666667,
+      "label": "A 建筑 1"
+    },
+    {
+      "start": 2.3,
+      "file": "png/frame-69.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.3333333333333335,
+      "file": "png/frame-70.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.4,
+      "file": "png/frame-72.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.466666666666667,
+      "file": "png/frame-74.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.533333333333333,
+      "file": "png/frame-76.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.6,
+      "file": "png/frame-78.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.6333333333333333,
+      "file": "png/frame-79.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.7,
+      "file": "png/frame-81.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.7666666666666666,
+      "file": "png/frame-83.png",
+      "duration": 0.1,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 2.8666666666666667,
+      "file": "png/frame-86.png",
+      "duration": 0.5333333333333333,
+      "label": "A 建筑 2"
+    },
+    {
+      "start": 3.4,
+      "file": "png/frame-102.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.433333333333333,
+      "file": "png/frame-103.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.5,
+      "file": "png/frame-105.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.533333333333333,
+      "file": "png/frame-106.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.566666666666667,
+      "file": "png/frame-107.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.6,
+      "file": "png/frame-108.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.6333333333333333,
+      "file": "png/frame-109.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.7,
+      "file": "png/frame-111.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.7333333333333334,
+      "file": "png/frame-112.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.7666666666666666,
+      "file": "png/frame-113.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.8,
+      "file": "png/frame-114.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.8333333333333335,
+      "file": "png/frame-115.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.9,
+      "file": "png/frame-117.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 3.933333333333333,
+      "file": "png/frame-118.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 4,
+      "file": "png/frame-120.png",
+      "duration": 0.5666666666666667,
+      "label": "A 建筑 3"
+    },
+    {
+      "start": 4.566666666666666,
+      "file": "png/frame-137.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.6,
+      "file": "png/frame-138.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.666666666666667,
+      "file": "png/frame-140.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.7,
+      "file": "png/frame-141.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.766666666666667,
+      "file": "png/frame-143.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.833333333333333,
+      "file": "png/frame-145.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.866666666666666,
+      "file": "png/frame-146.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 4.933333333333334,
+      "file": "png/frame-148.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 5,
+      "file": "png/frame-150.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 5.033333333333333,
+      "file": "png/frame-151.png",
+      "duration": 0.1,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 5.133333333333334,
+      "file": "png/frame-154.png",
+      "duration": 0.5333333333333333,
+      "label": "A 建筑 4"
+    },
+    {
+      "start": 5.666666666666667,
+      "file": "png/frame-170.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 5.733333333333333,
+      "file": "png/frame-172.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 5.766666666666667,
+      "file": "png/frame-173.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 5.833333333333333,
+      "file": "png/frame-175.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 5.866666666666666,
+      "file": "png/frame-176.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 5.9,
+      "file": "png/frame-177.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 5.966666666666667,
+      "file": "png/frame-179.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6,
+      "file": "png/frame-180.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6.033333333333333,
+      "file": "png/frame-181.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6.1,
+      "file": "png/frame-183.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6.133333333333334,
+      "file": "png/frame-184.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6.2,
+      "file": "png/frame-186.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6.266666666666667,
+      "file": "png/frame-188.png",
+      "duration": 0.5666666666666667,
+      "label": "A 建筑 5"
+    },
+    {
+      "start": 6.833333333333333,
+      "file": "png/frame-205.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 6.866666666666666,
+      "file": "png/frame-206.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 6.933333333333334,
+      "file": "png/frame-208.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7,
+      "file": "png/frame-210.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.066666666666666,
+      "file": "png/frame-212.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.133333333333334,
+      "file": "png/frame-214.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.166666666666667,
+      "file": "png/frame-215.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.233333333333333,
+      "file": "png/frame-217.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.3,
+      "file": "png/frame-219.png",
+      "duration": 0.1,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.4,
+      "file": "png/frame-222.png",
+      "duration": 0.5666666666666667,
+      "label": "A 建筑 6"
+    },
+    {
+      "start": 7.966666666666667,
+      "file": "png/frame-239.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8,
+      "file": "png/frame-240.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.066666666666666,
+      "file": "png/frame-242.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.133333333333333,
+      "file": "png/frame-244.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.2,
+      "file": "png/frame-246.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.266666666666667,
+      "file": "png/frame-248.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.3,
+      "file": "png/frame-249.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.366666666666667,
+      "file": "png/frame-251.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.433333333333334,
+      "file": "png/frame-253.png",
+      "duration": 0.1,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 8.533333333333333,
+      "file": "png/frame-256.png",
+      "duration": 0.5333333333333333,
+      "label": "A 建筑 7"
+    },
+    {
+      "start": 9.066666666666666,
+      "file": "png/frame-272.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.133333333333333,
+      "file": "png/frame-274.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.166666666666666,
+      "file": "png/frame-275.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.233333333333333,
+      "file": "png/frame-277.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.266666666666667,
+      "file": "png/frame-278.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.3,
+      "file": "png/frame-279.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.366666666666667,
+      "file": "png/frame-281.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.4,
+      "file": "png/frame-282.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.433333333333334,
+      "file": "png/frame-283.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.5,
+      "file": "png/frame-285.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.533333333333333,
+      "file": "png/frame-286.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.6,
+      "file": "png/frame-288.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 9.666666666666666,
+      "file": "png/frame-290.png",
+      "duration": 0.5333333333333333,
+      "label": "A 建筑 8"
+    },
+    {
+      "start": 10.2,
+      "file": "png/frame-306.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.266666666666667,
+      "file": "png/frame-308.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.3,
+      "file": "png/frame-309.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.366666666666667,
+      "file": "png/frame-311.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.4,
+      "file": "png/frame-312.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.433333333333334,
+      "file": "png/frame-313.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.5,
+      "file": "png/frame-315.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.533333333333333,
+      "file": "png/frame-316.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.566666666666666,
+      "file": "png/frame-317.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.633333333333333,
+      "file": "png/frame-319.png",
+      "duration": 0.03333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.666666666666666,
+      "file": "png/frame-320.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.733333333333333,
+      "file": "png/frame-322.png",
+      "duration": 0.06666666666666667,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 10.8,
+      "file": "png/frame-324.png",
+      "duration": 0.5333333333333333,
+      "label": "A 建筑 9"
+    },
+    {
+      "start": 11.333333333333334,
+      "file": "png/frame-340.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.366666666666667,
+      "file": "png/frame-341.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.4,
+      "file": "png/frame-342.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.433333333333334,
+      "file": "png/frame-343.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.466666666666667,
+      "file": "png/frame-344.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.5,
+      "file": "png/frame-345.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.566666666666666,
+      "file": "png/frame-347.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.633333333333333,
+      "file": "png/frame-349.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.666666666666666,
+      "file": "png/frame-350.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.733333333333333,
+      "file": "png/frame-352.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.766666666666667,
+      "file": "png/frame-353.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.8,
+      "file": "png/frame-354.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.866666666666667,
+      "file": "png/frame-356.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 11.933333333333334,
+      "file": "png/frame-358.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12,
+      "file": "png/frame-360.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.033333333333333,
+      "file": "png/frame-361.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.1,
+      "file": "png/frame-363.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.166666666666666,
+      "file": "png/frame-365.png",
+      "duration": 0.1,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.266666666666667,
+      "file": "png/frame-368.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.3,
+      "file": "png/frame-369.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.366666666666667,
+      "file": "png/frame-371.png",
+      "duration": 0.1,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.466666666666667,
+      "file": "png/frame-374.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.533333333333333,
+      "file": "png/frame-376.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.566666666666666,
+      "file": "png/frame-377.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.6,
+      "file": "png/frame-378.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.633333333333333,
+      "file": "png/frame-379.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.666666666666666,
+      "file": "png/frame-380.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.7,
+      "file": "png/frame-381.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.733333333333333,
+      "file": "png/frame-382.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.766666666666667,
+      "file": "png/frame-383.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.833333333333334,
+      "file": "png/frame-385.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.866666666666667,
+      "file": "png/frame-386.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.933333333333334,
+      "file": "png/frame-388.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 12.966666666666667,
+      "file": "png/frame-389.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13,
+      "file": "png/frame-390.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.066666666666666,
+      "file": "png/frame-392.png",
+      "duration": 0.06666666666666667,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.133333333333333,
+      "file": "png/frame-394.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.166666666666666,
+      "file": "png/frame-395.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.2,
+      "file": "png/frame-396.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.233333333333333,
+      "file": "png/frame-397.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.266666666666667,
+      "file": "png/frame-398.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.3,
+      "file": "png/frame-399.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.333333333333334,
+      "file": "png/frame-400.png",
+      "duration": 0.03333333333333333,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.366666666666667,
+      "file": "png/frame-401.png",
+      "duration": 0.1,
+      "label": "A 细节"
+    },
+    {
+      "start": 13.466666666666667,
+      "file": "png/frame-404.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 13.566666666666666,
+      "file": "png/frame-407.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 13.7,
+      "file": "png/frame-411.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 13.8,
+      "file": "png/frame-414.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 13.9,
+      "file": "png/frame-417.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 14.033333333333333,
+      "file": "png/frame-421.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 14.133333333333333,
+      "file": "png/frame-424.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 14.233333333333333,
+      "file": "png/frame-427.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 14.366666666666667,
+      "file": "png/frame-431.png",
+      "duration": 0.3,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 14.666666666666666,
+      "file": "png/frame-440.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.7,
+      "file": "png/frame-441.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.733333333333333,
+      "file": "png/frame-442.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.766666666666667,
+      "file": "png/frame-443.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.8,
+      "file": "png/frame-444.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.833333333333334,
+      "file": "png/frame-445.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.866666666666667,
+      "file": "png/frame-446.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.933333333333334,
+      "file": "png/frame-448.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 14.966666666666667,
+      "file": "png/frame-449.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 15,
+      "file": "png/frame-450.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 15.033333333333333,
+      "file": "png/frame-451.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 15.066666666666666,
+      "file": "png/frame-452.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 15.133333333333333,
+      "file": "png/frame-454.png",
+      "duration": 0.36666666666666664,
+      "label": "向前的桥"
+    },
+    {
+      "start": 15.5,
+      "file": "png/frame-465.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.533333333333333,
+      "file": "png/frame-466.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.566666666666666,
+      "file": "png/frame-467.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.6,
+      "file": "png/frame-468.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.633333333333333,
+      "file": "png/frame-469.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.666666666666666,
+      "file": "png/frame-470.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.7,
+      "file": "png/frame-471.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.733333333333333,
+      "file": "png/frame-472.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.766666666666667,
+      "file": "png/frame-473.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.8,
+      "file": "png/frame-474.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.833333333333334,
+      "file": "png/frame-475.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.866666666666667,
+      "file": "png/frame-476.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.9,
+      "file": "png/frame-477.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.933333333333334,
+      "file": "png/frame-478.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 15.966666666666667,
+      "file": "png/frame-479.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16,
+      "file": "png/frame-480.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.033333333333335,
+      "file": "png/frame-481.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.066666666666666,
+      "file": "png/frame-482.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.1,
+      "file": "png/frame-483.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.133333333333333,
+      "file": "png/frame-484.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.166666666666668,
+      "file": "png/frame-485.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.2,
+      "file": "png/frame-486.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.233333333333334,
+      "file": "png/frame-487.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.266666666666666,
+      "file": "png/frame-488.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 16.3,
+      "file": "png/frame-489.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.333333333333332,
+      "file": "png/frame-490.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.366666666666667,
+      "file": "png/frame-491.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.4,
+      "file": "png/frame-492.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.433333333333334,
+      "file": "png/frame-493.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.466666666666665,
+      "file": "png/frame-494.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.5,
+      "file": "png/frame-495.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.533333333333335,
+      "file": "png/frame-496.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.566666666666666,
+      "file": "png/frame-497.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.6,
+      "file": "png/frame-498.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 16.633333333333333,
+      "file": "png/frame-499.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.666666666666668,
+      "file": "png/frame-500.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.7,
+      "file": "png/frame-501.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.733333333333334,
+      "file": "png/frame-502.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.766666666666666,
+      "file": "png/frame-503.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.8,
+      "file": "png/frame-504.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.833333333333332,
+      "file": "png/frame-505.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.866666666666667,
+      "file": "png/frame-506.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.9,
+      "file": "png/frame-507.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.933333333333334,
+      "file": "png/frame-508.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 16.966666666666665,
+      "file": "png/frame-509.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17,
+      "file": "png/frame-510.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.033333333333335,
+      "file": "png/frame-511.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.066666666666666,
+      "file": "png/frame-512.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.1,
+      "file": "png/frame-513.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.133333333333333,
+      "file": "png/frame-514.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.166666666666668,
+      "file": "png/frame-515.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.2,
+      "file": "png/frame-516.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.233333333333334,
+      "file": "png/frame-517.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.266666666666666,
+      "file": "png/frame-518.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 17.3,
+      "file": "png/frame-519.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.333333333333332,
+      "file": "png/frame-520.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.366666666666667,
+      "file": "png/frame-521.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.4,
+      "file": "png/frame-522.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.433333333333334,
+      "file": "png/frame-523.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.466666666666665,
+      "file": "png/frame-524.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.5,
+      "file": "png/frame-525.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.533333333333335,
+      "file": "png/frame-526.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.566666666666666,
+      "file": "png/frame-527.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.6,
+      "file": "png/frame-528.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 17.633333333333333,
+      "file": "png/frame-529.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.666666666666668,
+      "file": "png/frame-530.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.7,
+      "file": "png/frame-531.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.733333333333334,
+      "file": "png/frame-532.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.766666666666666,
+      "file": "png/frame-533.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.8,
+      "file": "png/frame-534.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.833333333333332,
+      "file": "png/frame-535.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.866666666666667,
+      "file": "png/frame-536.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.9,
+      "file": "png/frame-537.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.933333333333334,
+      "file": "png/frame-538.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 17.966666666666665,
+      "file": "png/frame-539.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18,
+      "file": "png/frame-540.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.033333333333335,
+      "file": "png/frame-541.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.066666666666666,
+      "file": "png/frame-542.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.1,
+      "file": "png/frame-543.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.133333333333333,
+      "file": "png/frame-544.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.166666666666668,
+      "file": "png/frame-545.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.2,
+      "file": "png/frame-546.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.233333333333334,
+      "file": "png/frame-547.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.266666666666666,
+      "file": "png/frame-548.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.3,
+      "file": "png/frame-549.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.333333333333332,
+      "file": "png/frame-550.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.366666666666667,
+      "file": "png/frame-551.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.4,
+      "file": "png/frame-552.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.433333333333334,
+      "file": "png/frame-553.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.466666666666665,
+      "file": "png/frame-554.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.5,
+      "file": "png/frame-555.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.533333333333335,
+      "file": "png/frame-556.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.566666666666666,
+      "file": "png/frame-557.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.6,
+      "file": "png/frame-558.png",
+      "duration": 0.3333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 18.933333333333334,
+      "file": "png/frame-568.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 18.966666666666665,
+      "file": "png/frame-569.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19,
+      "file": "png/frame-570.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.033333333333335,
+      "file": "png/frame-571.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.066666666666666,
+      "file": "png/frame-572.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.1,
+      "file": "png/frame-573.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.133333333333333,
+      "file": "png/frame-574.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.166666666666668,
+      "file": "png/frame-575.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.2,
+      "file": "png/frame-576.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.233333333333334,
+      "file": "png/frame-577.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.266666666666666,
+      "file": "png/frame-578.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.3,
+      "file": "png/frame-579.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.333333333333332,
+      "file": "png/frame-580.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.366666666666667,
+      "file": "png/frame-581.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.4,
+      "file": "png/frame-582.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.433333333333334,
+      "file": "png/frame-583.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.466666666666665,
+      "file": "png/frame-584.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.5,
+      "file": "png/frame-585.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.533333333333335,
+      "file": "png/frame-586.png",
+      "duration": 0.03333333333333333,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.566666666666666,
+      "file": "png/frame-587.png",
+      "duration": 0.1,
+      "label": "B 底座"
+    },
+    {
+      "start": 19.666666666666668,
+      "file": "png/frame-590.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 19.7,
+      "file": "png/frame-591.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 19.766666666666666,
+      "file": "png/frame-593.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 19.833333333333332,
+      "file": "png/frame-595.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 19.9,
+      "file": "png/frame-597.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 19.966666666666665,
+      "file": "png/frame-599.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 20,
+      "file": "png/frame-600.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 20.066666666666666,
+      "file": "png/frame-602.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 20.133333333333333,
+      "file": "png/frame-604.png",
+      "duration": 0.1,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 20.233333333333334,
+      "file": "png/frame-607.png",
+      "duration": 0.5666666666666667,
+      "label": "B 建筑 1"
+    },
+    {
+      "start": 20.8,
+      "file": "png/frame-624.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 20.833333333333332,
+      "file": "png/frame-625.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 20.9,
+      "file": "png/frame-627.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 20.933333333333334,
+      "file": "png/frame-628.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21,
+      "file": "png/frame-630.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.066666666666666,
+      "file": "png/frame-632.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.1,
+      "file": "png/frame-633.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.166666666666668,
+      "file": "png/frame-635.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.233333333333334,
+      "file": "png/frame-637.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.266666666666666,
+      "file": "png/frame-638.png",
+      "duration": 0.1,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.366666666666667,
+      "file": "png/frame-641.png",
+      "duration": 0.5333333333333333,
+      "label": "B 建筑 2"
+    },
+    {
+      "start": 21.9,
+      "file": "png/frame-657.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 21.966666666666665,
+      "file": "png/frame-659.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22,
+      "file": "png/frame-660.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.066666666666666,
+      "file": "png/frame-662.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.1,
+      "file": "png/frame-663.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.133333333333333,
+      "file": "png/frame-664.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.2,
+      "file": "png/frame-666.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.233333333333334,
+      "file": "png/frame-667.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.266666666666666,
+      "file": "png/frame-668.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.333333333333332,
+      "file": "png/frame-670.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.366666666666667,
+      "file": "png/frame-671.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.433333333333334,
+      "file": "png/frame-673.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 22.5,
+      "file": "png/frame-675.png",
+      "duration": 0.5666666666666667,
+      "label": "B 建筑 3"
+    },
+    {
+      "start": 23.066666666666666,
+      "file": "png/frame-692.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.1,
+      "file": "png/frame-693.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.166666666666668,
+      "file": "png/frame-695.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.2,
+      "file": "png/frame-696.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.266666666666666,
+      "file": "png/frame-698.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.333333333333332,
+      "file": "png/frame-700.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.366666666666667,
+      "file": "png/frame-701.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.433333333333334,
+      "file": "png/frame-703.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.5,
+      "file": "png/frame-705.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.533333333333335,
+      "file": "png/frame-706.png",
+      "duration": 0.1,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 23.633333333333333,
+      "file": "png/frame-709.png",
+      "duration": 0.5333333333333333,
+      "label": "B 建筑 4"
+    },
+    {
+      "start": 24.166666666666668,
+      "file": "png/frame-725.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.233333333333334,
+      "file": "png/frame-727.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.266666666666666,
+      "file": "png/frame-728.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.333333333333332,
+      "file": "png/frame-730.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.366666666666667,
+      "file": "png/frame-731.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.433333333333334,
+      "file": "png/frame-733.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.466666666666665,
+      "file": "png/frame-734.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.533333333333335,
+      "file": "png/frame-736.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.566666666666666,
+      "file": "png/frame-737.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.633333333333333,
+      "file": "png/frame-739.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.666666666666668,
+      "file": "png/frame-740.png",
+      "duration": 0.1,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 24.766666666666666,
+      "file": "png/frame-743.png",
+      "duration": 0.5333333333333333,
+      "label": "B 建筑 5"
+    },
+    {
+      "start": 25.3,
+      "file": "png/frame-759.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.333333333333332,
+      "file": "png/frame-760.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.366666666666667,
+      "file": "png/frame-761.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.433333333333334,
+      "file": "png/frame-763.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.466666666666665,
+      "file": "png/frame-764.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.5,
+      "file": "png/frame-765.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.533333333333335,
+      "file": "png/frame-766.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.566666666666666,
+      "file": "png/frame-767.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.6,
+      "file": "png/frame-768.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.633333333333333,
+      "file": "png/frame-769.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.666666666666668,
+      "file": "png/frame-770.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.733333333333334,
+      "file": "png/frame-772.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.766666666666666,
+      "file": "png/frame-773.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.8,
+      "file": "png/frame-774.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.833333333333332,
+      "file": "png/frame-775.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 25.9,
+      "file": "png/frame-777.png",
+      "duration": 0.5333333333333333,
+      "label": "B 建筑 6"
+    },
+    {
+      "start": 26.433333333333334,
+      "file": "png/frame-793.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.5,
+      "file": "png/frame-795.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.533333333333335,
+      "file": "png/frame-796.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.6,
+      "file": "png/frame-798.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.633333333333333,
+      "file": "png/frame-799.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.7,
+      "file": "png/frame-801.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.733333333333334,
+      "file": "png/frame-802.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.8,
+      "file": "png/frame-804.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.833333333333332,
+      "file": "png/frame-805.png",
+      "duration": 0.06666666666666667,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.9,
+      "file": "png/frame-807.png",
+      "duration": 0.03333333333333333,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 26.933333333333334,
+      "file": "png/frame-808.png",
+      "duration": 0.1,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 27.033333333333335,
+      "file": "png/frame-811.png",
+      "duration": 0.5333333333333333,
+      "label": "B 建筑 7"
+    },
+    {
+      "start": 27.566666666666666,
+      "file": "png/frame-827.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.6,
+      "file": "png/frame-828.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.633333333333333,
+      "file": "png/frame-829.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.666666666666668,
+      "file": "png/frame-830.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.7,
+      "file": "png/frame-831.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.733333333333334,
+      "file": "png/frame-832.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.766666666666666,
+      "file": "png/frame-833.png",
+      "duration": 0.03333333333333333,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.8,
+      "file": "png/frame-834.png",
+      "duration": 0.1,
+      "label": "B 细节"
+    },
+    {
+      "start": 27.9,
+      "file": "png/frame-837.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 28,
+      "file": "png/frame-840.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 28.133333333333333,
+      "file": "png/frame-844.png",
+      "duration": 0.4333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 28.566666666666666,
+      "file": "png/frame-857.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 28.666666666666668,
+      "file": "png/frame-860.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 28.8,
+      "file": "png/frame-864.png",
+      "duration": 0.26666666666666666,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 29.066666666666666,
+      "file": "png/frame-872.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.1,
+      "file": "png/frame-873.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.133333333333333,
+      "file": "png/frame-874.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.2,
+      "file": "png/frame-876.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.233333333333334,
+      "file": "png/frame-877.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.266666666666666,
+      "file": "png/frame-878.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.3,
+      "file": "png/frame-879.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.366666666666667,
+      "file": "png/frame-881.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.4,
+      "file": "png/frame-882.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.433333333333334,
+      "file": "png/frame-883.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.5,
+      "file": "png/frame-885.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.566666666666666,
+      "file": "png/frame-887.png",
+      "duration": 0.36666666666666664,
+      "label": "向前的桥"
+    },
+    {
+      "start": 29.933333333333334,
+      "file": "png/frame-898.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 29.966666666666665,
+      "file": "png/frame-899.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30,
+      "file": "png/frame-900.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.033333333333335,
+      "file": "png/frame-901.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.066666666666666,
+      "file": "png/frame-902.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.1,
+      "file": "png/frame-903.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.133333333333333,
+      "file": "png/frame-904.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.166666666666668,
+      "file": "png/frame-905.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.2,
+      "file": "png/frame-906.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.233333333333334,
+      "file": "png/frame-907.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.266666666666666,
+      "file": "png/frame-908.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.3,
+      "file": "png/frame-909.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.333333333333332,
+      "file": "png/frame-910.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.366666666666667,
+      "file": "png/frame-911.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.4,
+      "file": "png/frame-912.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.433333333333334,
+      "file": "png/frame-913.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.466666666666665,
+      "file": "png/frame-914.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.5,
+      "file": "png/frame-915.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.533333333333335,
+      "file": "png/frame-916.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.566666666666666,
+      "file": "png/frame-917.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.6,
+      "file": "png/frame-918.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.633333333333333,
+      "file": "png/frame-919.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.666666666666668,
+      "file": "png/frame-920.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.7,
+      "file": "png/frame-921.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 30.733333333333334,
+      "file": "png/frame-922.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.766666666666666,
+      "file": "png/frame-923.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.8,
+      "file": "png/frame-924.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.833333333333332,
+      "file": "png/frame-925.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.866666666666667,
+      "file": "png/frame-926.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.9,
+      "file": "png/frame-927.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.933333333333334,
+      "file": "png/frame-928.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 30.966666666666665,
+      "file": "png/frame-929.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 31,
+      "file": "png/frame-930.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 31.033333333333335,
+      "file": "png/frame-931.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 31.066666666666666,
+      "file": "png/frame-932.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.1,
+      "file": "png/frame-933.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.133333333333333,
+      "file": "png/frame-934.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.166666666666668,
+      "file": "png/frame-935.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.2,
+      "file": "png/frame-936.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.233333333333334,
+      "file": "png/frame-937.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.266666666666666,
+      "file": "png/frame-938.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.3,
+      "file": "png/frame-939.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.333333333333332,
+      "file": "png/frame-940.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.366666666666667,
+      "file": "png/frame-941.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 31.4,
+      "file": "png/frame-942.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.433333333333334,
+      "file": "png/frame-943.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.466666666666665,
+      "file": "png/frame-944.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.5,
+      "file": "png/frame-945.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.533333333333335,
+      "file": "png/frame-946.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.566666666666666,
+      "file": "png/frame-947.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.6,
+      "file": "png/frame-948.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.633333333333333,
+      "file": "png/frame-949.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.666666666666668,
+      "file": "png/frame-950.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.7,
+      "file": "png/frame-951.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 31.733333333333334,
+      "file": "png/frame-952.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.766666666666666,
+      "file": "png/frame-953.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.8,
+      "file": "png/frame-954.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.833333333333332,
+      "file": "png/frame-955.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.866666666666667,
+      "file": "png/frame-956.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.9,
+      "file": "png/frame-957.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.933333333333334,
+      "file": "png/frame-958.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 31.966666666666665,
+      "file": "png/frame-959.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 32,
+      "file": "png/frame-960.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 32.03333333333333,
+      "file": "png/frame-961.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 32.06666666666667,
+      "file": "png/frame-962.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.1,
+      "file": "png/frame-963.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.13333333333333,
+      "file": "png/frame-964.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.166666666666664,
+      "file": "png/frame-965.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.2,
+      "file": "png/frame-966.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.233333333333334,
+      "file": "png/frame-967.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.266666666666666,
+      "file": "png/frame-968.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.3,
+      "file": "png/frame-969.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.333333333333336,
+      "file": "png/frame-970.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.36666666666667,
+      "file": "png/frame-971.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.4,
+      "file": "png/frame-972.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.43333333333333,
+      "file": "png/frame-973.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.46666666666667,
+      "file": "png/frame-974.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.5,
+      "file": "png/frame-975.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.53333333333333,
+      "file": "png/frame-976.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.56666666666667,
+      "file": "png/frame-977.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.6,
+      "file": "png/frame-978.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.63333333333333,
+      "file": "png/frame-979.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.666666666666664,
+      "file": "png/frame-980.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.7,
+      "file": "png/frame-981.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.733333333333334,
+      "file": "png/frame-982.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.766666666666666,
+      "file": "png/frame-983.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.8,
+      "file": "png/frame-984.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.833333333333336,
+      "file": "png/frame-985.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.86666666666667,
+      "file": "png/frame-986.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.9,
+      "file": "png/frame-987.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.93333333333333,
+      "file": "png/frame-988.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 32.96666666666667,
+      "file": "png/frame-989.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 33,
+      "file": "png/frame-990.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 33.03333333333333,
+      "file": "png/frame-991.png",
+      "duration": 0.3333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 33.36666666666667,
+      "file": "png/frame-1001.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.4,
+      "file": "png/frame-1002.png",
+      "duration": 0.06666666666666667,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.46666666666667,
+      "file": "png/frame-1004.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.5,
+      "file": "png/frame-1005.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.53333333333333,
+      "file": "png/frame-1006.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.56666666666667,
+      "file": "png/frame-1007.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.6,
+      "file": "png/frame-1008.png",
+      "duration": 0.06666666666666667,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.666666666666664,
+      "file": "png/frame-1010.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.7,
+      "file": "png/frame-1011.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.733333333333334,
+      "file": "png/frame-1012.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.766666666666666,
+      "file": "png/frame-1013.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.8,
+      "file": "png/frame-1014.png",
+      "duration": 0.06666666666666667,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.86666666666667,
+      "file": "png/frame-1016.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.9,
+      "file": "png/frame-1017.png",
+      "duration": 0.03333333333333333,
+      "label": "C 底座"
+    },
+    {
+      "start": 33.93333333333333,
+      "file": "png/frame-1018.png",
+      "duration": 0.06666666666666667,
+      "label": "C 底座"
+    },
+    {
+      "start": 34,
+      "file": "png/frame-1020.png",
+      "duration": 0.06666666666666667,
+      "label": "C 底座"
+    },
+    {
+      "start": 34.06666666666667,
+      "file": "png/frame-1022.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.1,
+      "file": "png/frame-1023.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.13333333333333,
+      "file": "png/frame-1024.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.166666666666664,
+      "file": "png/frame-1025.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.2,
+      "file": "png/frame-1026.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.233333333333334,
+      "file": "png/frame-1027.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.3,
+      "file": "png/frame-1029.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.333333333333336,
+      "file": "png/frame-1030.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.36666666666667,
+      "file": "png/frame-1031.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.4,
+      "file": "png/frame-1032.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.43333333333333,
+      "file": "png/frame-1033.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.46666666666667,
+      "file": "png/frame-1034.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.5,
+      "file": "png/frame-1035.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.53333333333333,
+      "file": "png/frame-1036.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.56666666666667,
+      "file": "png/frame-1037.png",
+      "duration": 0.03333333333333333,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.6,
+      "file": "png/frame-1038.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 34.666666666666664,
+      "file": "png/frame-1040.png",
+      "duration": 0.5666666666666667,
+      "label": "C 建筑 1"
+    },
+    {
+      "start": 35.233333333333334,
+      "file": "png/frame-1057.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.3,
+      "file": "png/frame-1059.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.36666666666667,
+      "file": "png/frame-1061.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.43333333333333,
+      "file": "png/frame-1063.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.5,
+      "file": "png/frame-1065.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.56666666666667,
+      "file": "png/frame-1067.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.63333333333333,
+      "file": "png/frame-1069.png",
+      "duration": 0.06666666666666667,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.7,
+      "file": "png/frame-1071.png",
+      "duration": 0.1,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 35.8,
+      "file": "png/frame-1074.png",
+      "duration": 0.5333333333333333,
+      "label": "C 建筑 2"
+    },
+    {
+      "start": 36.333333333333336,
+      "file": "png/frame-1090.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.36666666666667,
+      "file": "png/frame-1091.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.4,
+      "file": "png/frame-1092.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.43333333333333,
+      "file": "png/frame-1093.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.46666666666667,
+      "file": "png/frame-1094.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.5,
+      "file": "png/frame-1095.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.53333333333333,
+      "file": "png/frame-1096.png",
+      "duration": 0.03333333333333333,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.56666666666667,
+      "file": "png/frame-1097.png",
+      "duration": 0.1,
+      "label": "C 细节"
+    },
+    {
+      "start": 36.666666666666664,
+      "file": "png/frame-1100.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 36.766666666666666,
+      "file": "png/frame-1103.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 36.9,
+      "file": "png/frame-1107.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37,
+      "file": "png/frame-1110.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37.1,
+      "file": "png/frame-1113.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37.233333333333334,
+      "file": "png/frame-1117.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37.333333333333336,
+      "file": "png/frame-1120.png",
+      "duration": 0.1,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37.43333333333333,
+      "file": "png/frame-1123.png",
+      "duration": 0.13333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37.56666666666667,
+      "file": "png/frame-1127.png",
+      "duration": 0.2333333333333333,
+      "label": "绘制浪线"
+    },
+    {
+      "start": 37.8,
+      "file": "png/frame-1134.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 37.86666666666667,
+      "file": "png/frame-1136.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 37.93333333333333,
+      "file": "png/frame-1138.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 37.96666666666667,
+      "file": "png/frame-1139.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.03333333333333,
+      "file": "png/frame-1141.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.06666666666667,
+      "file": "png/frame-1142.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.13333333333333,
+      "file": "png/frame-1144.png",
+      "duration": 0.06666666666666667,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.2,
+      "file": "png/frame-1146.png",
+      "duration": 0.03333333333333333,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.233333333333334,
+      "file": "png/frame-1147.png",
+      "duration": 0.1,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.333333333333336,
+      "file": "png/frame-1150.png",
+      "duration": 0.36666666666666664,
+      "label": "向前的桥"
+    },
+    {
+      "start": 38.7,
+      "file": "png/frame-1161.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.733333333333334,
+      "file": "png/frame-1162.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.766666666666666,
+      "file": "png/frame-1163.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.8,
+      "file": "png/frame-1164.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.833333333333336,
+      "file": "png/frame-1165.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.86666666666667,
+      "file": "png/frame-1166.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.9,
+      "file": "png/frame-1167.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.93333333333333,
+      "file": "png/frame-1168.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 38.96666666666667,
+      "file": "png/frame-1169.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39,
+      "file": "png/frame-1170.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.03333333333333,
+      "file": "png/frame-1171.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.06666666666667,
+      "file": "png/frame-1172.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.1,
+      "file": "png/frame-1173.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.13333333333333,
+      "file": "png/frame-1174.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.166666666666664,
+      "file": "png/frame-1175.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.2,
+      "file": "png/frame-1176.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.233333333333334,
+      "file": "png/frame-1177.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.266666666666666,
+      "file": "png/frame-1178.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.3,
+      "file": "png/frame-1179.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.333333333333336,
+      "file": "png/frame-1180.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.36666666666667,
+      "file": "png/frame-1181.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.4,
+      "file": "png/frame-1182.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.43333333333333,
+      "file": "png/frame-1183.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.46666666666667,
+      "file": "png/frame-1184.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 39.5,
+      "file": "png/frame-1185.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.53333333333333,
+      "file": "png/frame-1186.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.56666666666667,
+      "file": "png/frame-1187.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.6,
+      "file": "png/frame-1188.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.63333333333333,
+      "file": "png/frame-1189.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.666666666666664,
+      "file": "png/frame-1190.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.7,
+      "file": "png/frame-1191.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.733333333333334,
+      "file": "png/frame-1192.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.766666666666666,
+      "file": "png/frame-1193.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.8,
+      "file": "png/frame-1194.png",
+      "duration": 0.03333333333333333,
+      "label": "静态浮标"
+    },
+    {
+      "start": 39.833333333333336,
+      "file": "png/frame-1195.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 39.86666666666667,
+      "file": "png/frame-1196.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 39.9,
+      "file": "png/frame-1197.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 39.93333333333333,
+      "file": "png/frame-1198.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 39.96666666666667,
+      "file": "png/frame-1199.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 40,
+      "file": "png/frame-1200.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 40.03333333333333,
+      "file": "png/frame-1201.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 40.06666666666667,
+      "file": "png/frame-1202.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 40.1,
+      "file": "png/frame-1203.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 40.13333333333333,
+      "file": "png/frame-1204.png",
+      "duration": 0.03333333333333333,
+      "label": "浪线"
+    },
+    {
+      "start": 40.166666666666664,
+      "file": "png/frame-1205.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.2,
+      "file": "png/frame-1206.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.233333333333334,
+      "file": "png/frame-1207.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.266666666666666,
+      "file": "png/frame-1208.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.3,
+      "file": "png/frame-1209.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.333333333333336,
+      "file": "png/frame-1210.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.36666666666667,
+      "file": "png/frame-1211.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.4,
+      "file": "png/frame-1212.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.43333333333333,
+      "file": "png/frame-1213.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.46666666666667,
+      "file": "png/frame-1214.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 1"
+    },
+    {
+      "start": 40.5,
+      "file": "png/frame-1215.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.53333333333333,
+      "file": "png/frame-1216.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.56666666666667,
+      "file": "png/frame-1217.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.6,
+      "file": "png/frame-1218.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.63333333333333,
+      "file": "png/frame-1219.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.666666666666664,
+      "file": "png/frame-1220.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.7,
+      "file": "png/frame-1221.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.733333333333334,
+      "file": "png/frame-1222.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.766666666666666,
+      "file": "png/frame-1223.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.8,
+      "file": "png/frame-1224.png",
+      "duration": 0.03333333333333333,
+      "label": "静态海鸥 2"
+    },
+    {
+      "start": 40.833333333333336,
+      "file": "png/frame-1225.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 40.86666666666667,
+      "file": "png/frame-1226.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 40.9,
+      "file": "png/frame-1227.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 40.93333333333333,
+      "file": "png/frame-1228.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 40.96666666666667,
+      "file": "png/frame-1229.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41,
+      "file": "png/frame-1230.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.03333333333333,
+      "file": "png/frame-1231.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.06666666666667,
+      "file": "png/frame-1232.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.1,
+      "file": "png/frame-1233.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.13333333333333,
+      "file": "png/frame-1234.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.166666666666664,
+      "file": "png/frame-1235.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.2,
+      "file": "png/frame-1236.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.233333333333334,
+      "file": "png/frame-1237.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.266666666666666,
+      "file": "png/frame-1238.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.3,
+      "file": "png/frame-1239.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.333333333333336,
+      "file": "png/frame-1240.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.36666666666667,
+      "file": "png/frame-1241.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.4,
+      "file": "png/frame-1242.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.43333333333333,
+      "file": "png/frame-1243.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.46666666666667,
+      "file": "png/frame-1244.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.5,
+      "file": "png/frame-1245.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.53333333333333,
+      "file": "png/frame-1246.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.56666666666667,
+      "file": "png/frame-1247.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.6,
+      "file": "png/frame-1248.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.63333333333333,
+      "file": "png/frame-1249.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.666666666666664,
+      "file": "png/frame-1250.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.7,
+      "file": "png/frame-1251.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.733333333333334,
+      "file": "png/frame-1252.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.766666666666666,
+      "file": "png/frame-1253.png",
+      "duration": 0.03333333333333333,
+      "label": "Pan"
+    },
+    {
+      "start": 41.8,
+      "file": "png/frame-1254.png",
+      "duration": 0.6,
+      "label": "Pan"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <style>
+    :root { color: #000; }
+    @media (prefers-color-scheme: dark) { :root { color: #fff; } }
+  </style>
+  <path d="M3 0h5v1h-5ZM2 1h7v1h-7ZM1 2h3v1h-3ZM7 2h3v1h-3ZM0 3h3v1h-3ZM8 3h3v1h-3ZM0 4h2v1h-2ZM9 4h2v1h-2ZM0 5h2v1h-2ZM9 5h4v1h-4ZM0 6h2v1h-2ZM6 6h2v1h-2ZM9 6h5v1h-5ZM0 7h3v1h-3ZM6 7h3v1h-3ZM12 7h3v1h-3ZM1 8h3v1h-3ZM7 8h3v1h-3ZM13 8h3v1h-3ZM2 9h5v1h-5ZM8 9h2v1h-2ZM14 9h2v1h-2ZM3 10h4v1h-4ZM14 10h2v1h-2ZM5 11h2v1h-2ZM14 11h2v1h-2ZM5 12h3v1h-3ZM13 12h3v1h-3ZM6 13h3v1h-3ZM12 13h3v1h-3ZM7 14h7v1h-7ZM8 15h5v1h-5Z"/>
+</svg>
