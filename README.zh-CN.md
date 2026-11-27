@@ -4,57 +4,39 @@
 
 > **人与 Agent 共享的视觉媒介。**
 
-CharDesk 让人和由语言模型驱动的 Agent 共用一份视觉化的 Unicode 文本。人在无限 Canvas 上绘制图解和界面；Agent 检视源码、修改并验证结果。Cell UI 用同一种媒介构建交互界面。
+CharDesk 用可编辑的 Unicode 文本制作图解、幻灯片和界面。
 
-[打开 Canvas](https://canvas.chardesk.com/) · [探索 Cell UI](https://ui.chardesk.com/)
+## 为什么做 CharDesk
 
-[文档](https://docs.chardesk.com/) · [产品首页](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
+人能一眼看出二维画面里的空间关系，语言模型擅长精确修改文本。我们做 CharDesk，是为了让人和 Agent 能在同一份作品上协作。
 
-## 从 Agent 开始
+固定的 Unicode 网格保留位置，框线表达结构，ANSI 表达样式。Agent 可以用文本修改一小块内容，人可以在画布原处检查结果，双方也能比较源码的不同版本。
 
-需要 Node.js 20 或更高版本。
+## 选择入口
 
-```sh
-npx skills add https://github.com/sayhi-bzb/chardesk --skill chardesk
-```
+| 入口 | 用途 |
+| --- | --- |
+| [Web Canvas](https://canvas.chardesk.com/) | 在浏览器的无限画布上绘制、编辑和分享。 |
+| [Terminal Canvas（TUI）](https://docs.chardesk.com/terminal/) | 运行 `chardesk`，在终端打开和编辑本地画布。 |
+| [Cell UI](https://ui.chardesk.com/) | 在字符网格上构建交互式 React 界面。 |
+| [CharGraph](https://chardesk.com/chargraph/) | 将 Markdown、Mermaid 等结构化源码转换成字符图。 |
+| [使用文档](https://docs.chardesk.com/) | 查看安装、产品用法和故障排查。 |
 
-在你的 Agent 中注册 MCP：
+## 与 Agent 一起工作
 
-```sh
-# Codex
-codex mcp add chardesk -- npx -y @chardesk/mcp
+用 [CharDesk Skill](https://docs.chardesk.com/agents/skill/) 给 Agent 提供创作指南。用 [Local MCP](https://docs.chardesk.com/agents/connect/) 或 [WebMCP](https://docs.chardesk.com/agents/webmcp/) 接入 Web Canvas。用 [CLI](https://docs.chardesk.com/cli/) 读取和修改本地文件或终端会话。
 
-# Claude Code
-claude mcp add chardesk -- npx -y @chardesk/mcp
+## 示例
 
-# Pi
-pi mcp add chardesk -- npx -y @chardesk/mcp
-```
+[![在 CharDesk 终端画布中搭建的 Port Sol 港湾场景](assets/videos/port-sol-native/encoded-90.png)](assets/videos/port-sol-native/port-sol-native.mp4)
 
-之后不需要手动运行 `server` 或 `pair`。首次调用 Canvas 工具时，如果尚未打开 Canvas，会自动打开；页面随后会自动连接本地 bridge。
+**Port Sol** · [终端实录](assets/videos/port-sol-native/port-sol-native.mp4) · [可编辑画布](assets/videos/port-sol-native/port-sol.chardesk)
 
-然后直接告诉 Agent 你想看到什么：
+[![多个模拟 Agent 在同一块画布上绘制的 Ring Canyon 峡谷](assets/videos/ring-canyon/readme-poster.png)](assets/videos/ring-canyon/ring-canyon.mp4)
 
-```text
-$chardesk 用一块可视化黑板解释显卡如何工作。
-```
+**Ring Canyon** · 104 个模拟 Agent 以扩散方式写入同一块画布。[视频](assets/videos/ring-canyon/ring-canyon.mp4) · [可编辑画布](assets/videos/ring-canyon/ring-canyon.chardesk)
 
-Agent 会创建源码、检查结果并打开画布。你不需要先学习文件格式，也不需要配置 AI Provider。
-
-## 可以用它做什么
-
-- 把概念讲成一段空间叙事，而不是堆成一堵文字墙。
-- 用字符幻灯片呈现想法。
-- 用曲线、公式、数据和标注制作科研图。
-- 设计界面、终端、仪表盘和产品状态。
-- 描绘架构、流程、时间线与关系。
-- 保留一块人和 Agent 都能检查、继续修改的 Canvas。
-
-[![CharDesk 作为人与 Agent 共享的视觉媒介](apps/site/public/showcase/01-shared-medium.png)](apps/site/showcase-sources/01-shared-medium.md)
-
-**共享视觉媒介** · [源码](apps/site/showcase-sources/01-shared-medium.md)
-
-[![显卡工作原理的可视化讲解](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
+[![显卡在一帧里做什么的可视化讲解](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
 **可视化讲解** · [源码](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
@@ -62,71 +44,19 @@ Agent 会创建源码、检查结果并打开画布。你不需要先学习文�
 
 **科研图** · [源码](apps/site/showcase-sources/03-el-nino-observatory.md)
 
-[![字符幻灯片叙事](apps/site/public/showcase/04-story-slides.ja.png)](apps/site/showcase-sources/04-story-slides.ja.md)
+[![用三张字符幻灯片讲述故事](apps/site/public/showcase/04-story-slides.ja.png)](apps/site/showcase-sources/04-story-slides.ja.md)
 
-**字符 Slides** · [源码](apps/site/showcase-sources/04-story-slides.ja.md)
+**字符幻灯片** · [源码](apps/site/showcase-sources/04-story-slides.ja.md)
 
-[![ANSI 与 Nerd Font 产品界面](apps/site/public/showcase/05-interface-console.png)](apps/site/showcase-sources/05-interface-console.md)
+[![使用 ANSI 样式和 Nerd Font 字形的产品界面草图](apps/site/public/showcase/05-interface-console.png)](apps/site/showcase-sources/05-interface-console.md)
 
-**界面设计** · [源码](apps/site/showcase-sources/05-interface-console.md)
+**界面草图** · [源码](apps/site/showcase-sources/05-interface-console.md)
 
-[![人与 Agent 共享的 Canvas](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
-
-**Agent Canvas** · [源码](apps/site/showcase-sources/06-agent-blackboard.md)
-
-### ANSI 界面实验
-
-[![上下文控制室](apps/site/public/showcase/07-context-control-room.png)](apps/site/showcase-sources/07-context-control-room.md)
-
-**上下文控制室** · [源码](apps/site/showcase-sources/07-context-control-room.md)
-
-[![灵感信号播放器](apps/site/public/showcase/08-idea-signal-player.png)](apps/site/showcase-sources/08-idea-signal-player.md)
-
-**灵感信号播放器** · [源码](apps/site/showcase-sources/08-idea-signal-player.md)
-
-[![口袋 Canvas](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
-
-**口袋 Canvas** · [源码](apps/site/showcase-sources/09-pocket-blackboard.md)
-
-## 为什么文本也可以是视觉媒介
-
-人擅长扫视二维平面，语言模型擅长生成和修改 token 序列。截图保留了布局，却引入像素噪声，也很难在多轮协作中精确修改；普通文本容易编辑，却通常失去了空间与样式。
-
-CharDesk 同时保留两者。固定 Unicode 网格承载位置，Box Drawing 承载结构，ANSI 承载强调。作品仍然可以被选择、搜索、比较版本，并由 Agent 直接修改。
-
-```text
-   人阅读并使用
-          ⇅
-   共享的 Unicode 场景
-          ⇅
-   Agent 阅读并修改
-```
-
-## 表达媒介
-
-### 视觉文本
-
-Unicode、Box Drawing、中日韩字符、技术符号、单色 Emoji 与 Nerd Font 字形共享同一网格。ESC-less ANSI 为内容增加前景色、背景色、粗体、斜体、下划线、删除线与反色，而不必把作品变成图片。
-
-### 结构化表达
-
-可以编写 Markdown、Mermaid、数学公式、GFM 表格、Fenced Code、JSON、YAML、Vega-Lite，以及 XY 图或折线图。CharGraph 将结构化源码编译成可移植的字符图，同时保留生成它的源码。
-
-### 空间组织
-
-在自由画布中排列内容、从可复用 Cell 模板开始，用 `|||` 与 `---` 组合多行区域，或用 Slides 讲述故事。所有形态最终进入同一条字符网格渲染管线。
-
-### Agent 接入
-
-- **Local MCP：** 在你的 Agent（Codex、Claude Code 或 Pi）中注册一次 `@chardesk/mcp` 即可。Agent 会自动启动 MCP；Canvas 会自动发现本地 bridge，首次调用 `canvas_*` 工具时必要的话会打开 Canvas。详见 [MCP 包说明](packages/mcp/README.md)。
-- **Chrome WebMCP：**实验性能力。开启 `chrome://flags/#enable-webmcp-testing`，重启 Chrome；只有明确需要浏览器路径时才使用。
-- **ChatGPT Site Tools：**实验性能力。在 **Settings → Browser → Permissions** 中开启 **Site tools**，再用 ChatGPT 内置浏览器打开 CharDesk。参见 [OpenAI 官方 Site Tools 文档](https://learn.chatgpt.com/docs/webmcp)。
-
-浏览器 Agent 可以调用 `chardesk_read_materials`，进入与 skill 相同的视觉语言和案例环境。Canvas 工具可以直接读取、搜索和写入当前二维 Cell 画布。
+[更多示例](apps/site/showcase-sources/) · [产品首页](https://chardesk.com/)
 
 ## 面向开发者
 
-使用 [`@chardesk/protocol`](packages/protocol/README.md) 完成格式交换，使用 [`@chardesk/viewer`](packages/viewer/README.md) 完成框架无关的渲染，使用 [`@chardesk/fonts`](packages/fonts/README.md) 获得兼容字形集。安装与 API 说明由各个包的文档负责。
+[Protocol](packages/protocol/README.md) 用于格式交换 · [Viewer](packages/viewer/README.md) 用于框架无关的渲染 · [Fonts](packages/fonts/README.md) 提供兼容字形。
 
 ## 致谢
 
@@ -134,4 +64,4 @@ Unicode、Box Drawing、中日韩字符、技术符号、单色 Emoji 与 Nerd F
 
 ## 许可证
 
-CharDesk 基于 [MIT License](LICENSE) 开源。
+[MIT](LICENSE)

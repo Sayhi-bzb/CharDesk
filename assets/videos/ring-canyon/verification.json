@@ -1,0 +1,279 @@
+{
+  "duration": 17.6,
+  "written": 14336,
+  "totalAgents": 104,
+  "peakConcurrent": 96,
+  "peakVisible": 57,
+  "peakBadges": 8,
+  "state": [
+    {
+      "time": 0,
+      "written": 0,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 31
+    },
+    {
+      "time": 0.5,
+      "written": 1,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 31
+    },
+    {
+      "time": 1,
+      "written": 2,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 31
+    },
+    {
+      "time": 1.5,
+      "written": 4,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 30.999938121948635
+    },
+    {
+      "time": 2,
+      "written": 6,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 30.790635622140826
+    },
+    {
+      "time": 2.5,
+      "written": 8,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 29.44565880546311
+    },
+    {
+      "time": 3,
+      "written": 36,
+      "visibleWrites": 0,
+      "active": 2,
+      "badgeCount": 2,
+      "scale": 27.232122213903992
+    },
+    {
+      "time": 3.5,
+      "written": 114,
+      "visibleWrites": 0,
+      "active": 2,
+      "badgeCount": 2,
+      "scale": 24.844081736815284
+    },
+    {
+      "time": 4,
+      "written": 282,
+      "visibleWrites": 0,
+      "active": 2,
+      "badgeCount": 2,
+      "scale": 22.41306386886704
+    },
+    {
+      "time": 4.5,
+      "written": 527,
+      "visibleWrites": 2,
+      "active": 4,
+      "badgeCount": 4,
+      "scale": 20.065860408445587
+    },
+    {
+      "time": 5,
+      "written": 859,
+      "visibleWrites": 5,
+      "active": 6,
+      "badgeCount": 6,
+      "scale": 17.919459087936062
+    },
+    {
+      "time": 5.5,
+      "written": 1265,
+      "visibleWrites": 7,
+      "active": 10,
+      "badgeCount": 7,
+      "scale": 16.053595772191446
+    },
+    {
+      "time": 6,
+      "written": 1724,
+      "visibleWrites": 6,
+      "active": 13,
+      "badgeCount": 7,
+      "scale": 14.500060554783705
+    },
+    {
+      "time": 6.5,
+      "written": 2289,
+      "visibleWrites": 13,
+      "active": 17,
+      "badgeCount": 7,
+      "scale": 13.248162460375731
+    },
+    {
+      "time": 7,
+      "written": 2943,
+      "visibleWrites": 18,
+      "active": 24,
+      "badgeCount": 7,
+      "scale": 12.258863798394657
+    },
+    {
+      "time": 7.5,
+      "written": 3677,
+      "visibleWrites": 20,
+      "active": 26,
+      "badgeCount": 7,
+      "scale": 11.479992440299727
+    },
+    {
+      "time": 8,
+      "written": 4486,
+      "visibleWrites": 22,
+      "active": 27,
+      "badgeCount": 7,
+      "scale": 10.858281087986132
+    },
+    {
+      "time": 8.5,
+      "written": 5299,
+      "visibleWrites": 26,
+      "active": 38,
+      "badgeCount": 7,
+      "scale": 10.347023207857433
+    },
+    {
+      "time": 9,
+      "written": 6115,
+      "visibleWrites": 31,
+      "active": 40,
+      "badgeCount": 8,
+      "scale": 9.909687571444106
+    },
+    {
+      "time": 9.5,
+      "written": 6919,
+      "visibleWrites": 31,
+      "active": 44,
+      "badgeCount": 8,
+      "scale": 9.520411169170183
+    },
+    {
+      "time": 10,
+      "written": 7743,
+      "visibleWrites": 34,
+      "active": 47,
+      "badgeCount": 8,
+      "scale": 9.162500119969858
+    },
+    {
+      "time": 10.5,
+      "written": 8569,
+      "visibleWrites": 40,
+      "active": 51,
+      "badgeCount": 8,
+      "scale": 8.826062864445351
+    },
+    {
+      "time": 11,
+      "written": 9449,
+      "visibleWrites": 33,
+      "active": 52,
+      "badgeCount": 8,
+      "scale": 8.50565656528202
+    },
+    {
+      "time": 11.5,
+      "written": 10302,
+      "visibleWrites": 40,
+      "active": 55,
+      "badgeCount": 8,
+      "scale": 8.198434185357959
+    },
+    {
+      "time": 12,
+      "written": 11157,
+      "visibleWrites": 40,
+      "active": 54,
+      "badgeCount": 8,
+      "scale": 7.9029125604757775
+    },
+    {
+      "time": 12.5,
+      "written": 11965,
+      "visibleWrites": 40,
+      "active": 55,
+      "badgeCount": 8,
+      "scale": 7.618260051950693
+    },
+    {
+      "time": 13,
+      "written": 12750,
+      "visibleWrites": 37,
+      "active": 53,
+      "badgeCount": 4,
+      "scale": 7.3439321265185225
+    },
+    {
+      "time": 13.5,
+      "written": 13475,
+      "visibleWrites": 46,
+      "active": 41,
+      "badgeCount": 4,
+      "scale": 7.079504501279096
+    },
+    {
+      "time": 14,
+      "written": 13990,
+      "visibleWrites": 24,
+      "active": 27,
+      "badgeCount": 4,
+      "scale": 6.824604134011189
+    },
+    {
+      "time": 14.5,
+      "written": 14242,
+      "visibleWrites": 11,
+      "active": 4,
+      "badgeCount": 4,
+      "scale": 6.578883176501763
+    },
+    {
+      "time": 15,
+      "written": 14325,
+      "visibleWrites": 0,
+      "active": 4,
+      "badgeCount": 4,
+      "scale": 6.34200983271603
+    },
+    {
+      "time": 15.5,
+      "written": 14331,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 6.114166279540671
+    },
+    {
+      "time": 16,
+      "written": 14335,
+      "visibleWrites": 0,
+      "active": 1,
+      "badgeCount": 1,
+      "scale": 5.964151004840085
+    }
+  ],
+  "firstFullFrame": 492,
+  "firstWideFrame": 492,
+  "completionTime": 16.4,
+  "zoomPeak": 4.716666666666667,
+  "oneZoomVelocityPeak": true
+}

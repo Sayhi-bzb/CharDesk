@@ -4,57 +4,39 @@
 
 > **A shared visual medium for people and agents.**
 
-CharDesk gives people and LLM-powered agents a common artifact: visual Unicode text. Its infinite Canvas lets people draw diagrams and interfaces while agents inspect the source, revise it, and verify the result. Cell UI applies the same medium to interactive interfaces.
+CharDesk turns editable Unicode text into diagrams, slides, and interfaces.
 
-[Open Canvas](https://canvas.chardesk.com/) · [Explore Cell UI](https://ui.chardesk.com/)
+## Why we built CharDesk
 
-[Documentation](https://docs.chardesk.com/) · [Product home](https://chardesk.com/) · [CharGraph](https://chardesk.com/chargraph/)
+People read spatial relationships at a glance. Language models can make precise edits to text. We built CharDesk so people and agents could work on the same artifact.
 
-## Start with your agent
+A fixed Unicode grid preserves position, box drawing gives it structure, and ANSI carries style. An agent can edit a small part as text, a person can review the change in place, and both can compare versions of the source.
 
-Requires Node.js 20 or later.
+## Choose where to start
 
-```sh
-npx skills add https://github.com/sayhi-bzb/chardesk --skill chardesk
-```
+| Entry point | What it’s for |
+| --- | --- |
+| [Web Canvas](https://canvas.chardesk.com/) | Draw, edit, and share on an infinite canvas in your browser. |
+| [Terminal Canvas (TUI)](https://docs.chardesk.com/terminal/) | Open and edit local canvases in your terminal with `chardesk`. |
+| [Cell UI](https://ui.chardesk.com/) | Build interactive React interfaces on a character grid. |
+| [CharGraph](https://chardesk.com/chargraph/) | Turn Markdown, Mermaid, and other structured sources into character graphics. |
+| [Documentation](https://docs.chardesk.com/) | Find setup, product guides, and troubleshooting. |
 
-Register the MCP server with your agent:
+## Work with an agent
 
-```sh
-# Codex
-codex mcp add chardesk -- npx -y @chardesk/mcp
+Use the [CharDesk Skill](https://docs.chardesk.com/agents/skill/) for authoring guidance. Connect an agent to Web Canvas with [Local MCP](https://docs.chardesk.com/agents/connect/) or [WebMCP](https://docs.chardesk.com/agents/webmcp/). Use the [CLI](https://docs.chardesk.com/cli/) to read and edit local files or terminal sessions.
 
-# Claude Code
-claude mcp add chardesk -- npx -y @chardesk/mcp
+## Examples
 
-# Pi
-pi mcp add chardesk -- npx -y @chardesk/mcp
-```
+[![Port Sol, a harbor scene built in CharDesk Terminal Canvas](assets/videos/port-sol-native/encoded-90.png)](assets/videos/port-sol-native/port-sol-native.mp4)
 
-After that, no manual `server` or `pair` command is needed. The first Canvas tool call opens Canvas when necessary, and the page connects to the local bridge automatically.
+**Port Sol** · [Terminal recording](assets/videos/port-sol-native/port-sol-native.mp4) · [Editable Canvas](assets/videos/port-sol-native/port-sol.chardesk)
 
-Then tell your agent what you want to see:
+[![Ring Canyon, a canyon drawn by simulated agents on a shared Canvas](assets/videos/ring-canyon/readme-poster.png)](assets/videos/ring-canyon/ring-canyon.mp4)
 
-```text
-$chardesk Explain how a GPU works as a visual Canvas.
-```
+**Ring Canyon** · 104 simulated agents fill a shared canvas through diffusion. [Video](assets/videos/ring-canyon/ring-canyon.mp4) · [Editable Canvas](assets/videos/ring-canyon/ring-canyon.chardesk)
 
-The agent creates the source, checks it, and opens the canvas. You do not need to learn a file format or configure an AI provider first.
-
-## What you can make
-
-- Explain a concept as a spatial story instead of a wall of text.
-- Present an idea as character-based slides.
-- Build scientific figures with plots, formulas, data, and annotations.
-- Sketch interfaces, terminals, dashboards, and product states.
-- Map architectures, workflows, timelines, and relationships.
-- Keep a Canvas that people and agents can inspect and revise together.
-
-[![CharDesk as a shared visual medium](apps/site/public/showcase/01-shared-medium.png)](apps/site/showcase-sources/01-shared-medium.md)
-
-**Shared medium** · [Source](apps/site/showcase-sources/01-shared-medium.md)
-
-[![A visual explanation of how a GPU works](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
+[![A visual explanation of what a GPU does in one frame](apps/site/public/showcase/02-gpu-blackboard.zh-CN.png)](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
 **Visual explanation** · [Source](apps/site/showcase-sources/02-gpu-blackboard.zh-CN.md)
 
@@ -62,71 +44,19 @@ The agent creates the source, checks it, and opens the canvas. You do not need t
 
 **Scientific figure** · [Source](apps/site/showcase-sources/03-el-nino-observatory.md)
 
-[![A character-based slide story](apps/site/public/showcase/04-story-slides.ja.png)](apps/site/showcase-sources/04-story-slides.ja.md)
+[![A story in three character-based slides](apps/site/public/showcase/04-story-slides.ja.png)](apps/site/showcase-sources/04-story-slides.ja.md)
 
 **Character slides** · [Source](apps/site/showcase-sources/04-story-slides.ja.md)
 
-[![An ANSI and Nerd Font product interface](apps/site/public/showcase/05-interface-console.png)](apps/site/showcase-sources/05-interface-console.md)
+[![A product interface sketch with ANSI styling and Nerd Font glyphs](apps/site/public/showcase/05-interface-console.png)](apps/site/showcase-sources/05-interface-console.md)
 
-**Interface design** · [Source](apps/site/showcase-sources/05-interface-console.md)
+**Interface sketch** · [Source](apps/site/showcase-sources/05-interface-console.md)
 
-[![A shared human and agent Canvas](apps/site/public/showcase/06-agent-blackboard.png)](apps/site/showcase-sources/06-agent-blackboard.md)
-
-**Agent Canvas** · [Source](apps/site/showcase-sources/06-agent-blackboard.md)
-
-### ANSI interface studies
-
-[![A context control room](apps/site/public/showcase/07-context-control-room.png)](apps/site/showcase-sources/07-context-control-room.md)
-
-**Context Control Room** · [Source](apps/site/showcase-sources/07-context-control-room.md)
-
-[![An idea signal player](apps/site/public/showcase/08-idea-signal-player.png)](apps/site/showcase-sources/08-idea-signal-player.md)
-
-**Idea Signal Player** · [Source](apps/site/showcase-sources/08-idea-signal-player.md)
-
-[![A pocket Canvas](apps/site/public/showcase/09-pocket-blackboard.png)](apps/site/showcase-sources/09-pocket-blackboard.md)
-
-**Pocket Canvas** · [Source](apps/site/showcase-sources/09-pocket-blackboard.md)
-
-## Why text can be visual
-
-People scan a two-dimensional surface. Language models generate and edit token sequences. Screenshots preserve layout, but add pixel noise and are awkward to revise precisely across turns; plain text is easy to edit, but normally gives up space and style.
-
-CharDesk keeps both. A fixed Unicode grid carries position, box drawing carries structure, and ANSI carries emphasis. The result remains selectable, searchable, diffable, and directly editable by an agent.
-
-```text
-   Person reads and uses
-           ⇅
-   Shared Unicode scene
-           ⇅
-   Agent reads and edits
-```
-
-## The medium
-
-### Visual text
-
-Unicode, box drawing, CJK, technical symbols, monochrome emoji, and Nerd Font glyphs share one grid. ESC-less ANSI adds foreground and background colors, bold, italic, underline, strike, and inverse styles without turning the work into an image.
-
-### Structured expression
-
-Write Markdown, Mermaid, math, GFM tables, fenced code, JSON, YAML, Vega-Lite, and XY or line charts. CharGraph compiles structured source into portable character graphics while preserving the source that produced it.
-
-### Spatial composition
-
-Arrange content on Freeform canvases, start from reusable Cell templates, compose multiline fields with `|||` and `---`, or tell a story with Slides. Every form resolves to the same character-grid rendering pipeline.
-
-### Agent access
-
-- **Local MCP:** register `@chardesk/mcp` once with your agent (Codex, Claude Code, or Pi). The agent starts it automatically; Canvas discovers the local bridge and the first `canvas_*` call opens Canvas if needed. See the [MCP package reference](packages/mcp/README.md).
-- **Chrome WebMCP:** experimental. Enable `chrome://flags/#enable-webmcp-testing`, relaunch Chrome, and use the browser path only when needed.
-- **ChatGPT Site Tools:** experimental. Enable **Site tools** under **Settings → Browser → Permissions**, then open CharDesk in ChatGPT's built-in browser. See the [official Site Tools guide](https://learn.chatgpt.com/docs/webmcp).
-
-Browser agents can call `chardesk_read_materials` to enter the same visual language and worked examples as the skill. Canvas tools read, search, and write the active two-dimensional Cell surface.
+[More examples](apps/site/showcase-sources/) · [Product home](https://chardesk.com/)
 
 ## For builders
 
-Use [`@chardesk/protocol`](packages/protocol/README.md) for interchange, [`@chardesk/viewer`](packages/viewer/README.md) for framework-independent rendering, and [`@chardesk/fonts`](packages/fonts/README.md) for the compatible glyph set. Each package owns its installation and API documentation.
+[Protocol](packages/protocol/README.md) for interchange · [Viewer](packages/viewer/README.md) for framework-independent rendering · [Fonts](packages/fonts/README.md) for the compatible glyph set.
 
 ## Thanks
 
@@ -134,4 +64,4 @@ Thanks to [LINUX DO](https://linux.do/).
 
 ## License
 
-CharDesk is open source under the [MIT License](LICENSE).
+[MIT](LICENSE)
